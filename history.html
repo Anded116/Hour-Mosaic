@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hour Mosaic — History</title>
+    <link rel="stylesheet" href="/src/theme/tokens.css" />
+    <link rel="stylesheet" href="/src/history.css" />
+    <script type="module" src="/src/history.ts" defer></script>
+  </head>
+  <body class="window window--history">
+    <header class="history__header">
+      <h1>History</h1>
+      <p class="history__sub">last 30 days</p>
+    </header>
+    <main class="history__root">
+      <section class="history__section">
+        <div id="month-heatmap" class="hm-heatmap"></div>
+      </section>
+      <section class="history__section history__metrics">
+        <div class="history__metric"><span class="label">avg productive</span><span id="metric-avg" class="value">—</span></div>
+        <div class="history__metric"><span class="label">best day</span><span id="metric-best" class="value">—</span></div>
+        <div class="history__metric"><span class="label">worst day</span><span id="metric-worst" class="value">—</span></div>
+        <div class="history__metric"><span class="label">deep work streak</span><span id="metric-streak" class="value">—</span></div>
+      </section>
+      <section class="history__section history__drill">
+        <header class="history__drill-head">
+          <button id="day-prev" type="button" aria-label="Previous day">◀</button>
+          <span id="day-label" class="history__day-label">—</span>
+          <button id="day-next" type="button" aria-label="Next day">▶</button>
+        </header>
+        <canvas id="day-canvas" class="history__day-canvas"></canvas>
+      </section>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,146 @@
+.window--history {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--c-bg);
+  overflow: hidden;
+}
+
+.history__header {
+  padding: 14px 20px 6px;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.history__header h1 {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--c-text);
+}
+
+.history__sub {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--c-text-muted);
+}
+
+.history__root {
+  padding: 6px 20px 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow-y: auto;
+}
+
+.history__section {
+  border-top: 1px solid var(--c-border);
+  padding-top: 12px;
+}
+
+.history__section:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.hm-heatmap {
+  display: grid;
+  grid-template-columns: repeat(30, 1fr);
+  gap: 3px;
+}
+
+.hm-heatmap__cell {
+  aspect-ratio: 1;
+  width: 100%;
+  border: 1px solid var(--c-border);
+  border-radius: 2px;
+  padding: 0;
+  cursor: pointer;
+  background: var(--c-void);
+}
+
+.hm-heatmap__cell--selected {
+  outline: 1px solid var(--c-accent);
+  outline-offset: 1px;
+}
+
+.history__metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.history__metric {
+  padding: 8px 10px;
+  background: var(--c-bg-elevated);
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.history__metric .label {
+  color: var(--c-text-muted);
+  font-size: 10px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.history__metric .value {
+  color: var(--c-text);
+  font-family: var(--font-mono);
+  font-size: 14px;
+}
+
+.history__drill {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 280px;
+}
+
+.history__drill-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.history__drill-head button {
+  width: 24px;
+  height: 24px;
+  background: var(--c-bg-elevated);
+  border: 1px solid var(--c-border);
+  border-radius: 3px;
+  color: var(--c-text);
+  cursor: pointer;
+}
+
+.history__drill-head button:hover {
+  border-color: var(--c-accent);
+  color: var(--c-accent);
+}
+
+.history__day-label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--c-text);
+}
+
+.history__day-canvas {
+  flex: 1;
+  min-height: 240px;
+  width: 100%;
+  background: var(--c-bg);
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+}
+
+.muted {
+  color: var(--c-text-muted);
+}

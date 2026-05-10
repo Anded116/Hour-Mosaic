@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hour Mosaic</title>
+    <link rel="stylesheet" href="/src/theme/tokens.css" />
+    <link rel="stylesheet" href="/src/main.css" />
+    <script type="module" src="/src/main.ts" defer></script>
+  </head>
+  <body class="window window--main">
+    <div class="drag-region" data-tauri-drag-region></div>
+    <canvas id="mosaic" class="mosaic"></canvas>
+    <div id="ticker" class="ticker" aria-live="polite"></div>
+    <button id="hamburger" class="hamburger" aria-label="Menu">⋮</button>
+  </body>
+</html>

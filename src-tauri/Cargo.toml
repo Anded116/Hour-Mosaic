@@ -1,0 +1,47 @@
+[package]
+name = "hour-mosaic"
+version = "0.1.0"
+description = "Hour Mosaic — ambient time tracker"
+authors = ["Clawbuster"]
+edition = "2021"
+rust-version = "1.77"
+
+[lib]
+name = "app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync", "signal"] }
+chrono = { version = "0.4", features = ["serde", "clock"] }
+anyhow = "1"
+thiserror = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+parking_lot = "0.12"
+rusqlite = { version = "0.32", features = ["bundled"] }
+dirs = "5"
+active-win-pos-rs = "0.8"
+tauri-plugin-global-shortcut = "2"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = [
+  "Win32_UI_Input_KeyboardAndMouse",
+  "Win32_System_SystemInformation",
+] }
+
+# Hotkey + autostart (M6, M9)
+# tauri-plugin-global-shortcut = "2"
+# tauri-plugin-autostart = "2"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true
+panic = "abort"

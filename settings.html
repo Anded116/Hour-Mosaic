@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hour Mosaic — Settings</title>
+    <link rel="stylesheet" href="/src/theme/tokens.css" />
+    <link rel="stylesheet" href="/src/settings.css" />
+    <script type="module" src="/src/settings.ts" defer></script>
+  </head>
+  <body class="window window--settings">
+    <header class="settings__header">
+      <h1>Settings</h1>
+    </header>
+    <nav class="settings__nav" id="settings-nav">
+      <button type="button" data-pane="classification" class="settings__nav-btn settings__nav-btn--active">Classification</button>
+      <button type="button" data-pane="day-start" class="settings__nav-btn">Day start</button>
+      <button type="button" data-pane="hotkeys" class="settings__nav-btn">Hotkeys</button>
+      <button type="button" data-pane="privacy" class="settings__nav-btn">Privacy</button>
+    </nav>
+    <main id="settings-root" class="settings__root">
+      <section id="pane-classification" class="settings__pane settings__pane--active"></section>
+      <section id="pane-day-start" class="settings__pane"></section>
+      <section id="pane-hotkeys" class="settings__pane">
+        <p class="muted">Mark break now is bound to <span class="mono">Ctrl+Shift+B</span>. Customising hotkeys lands in M9.</p>
+      </section>
+      <section id="pane-privacy" class="settings__pane"></section>
+    </main>
+  </body>
+</html>

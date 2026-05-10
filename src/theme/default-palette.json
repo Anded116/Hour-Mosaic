@@ -1,0 +1,23 @@
+{
+  "name": "Default Dark Neon",
+  "tokens": {
+    "--c-bg": "#0f0f12",
+    "--c-bg-elevated": "#16161a",
+    "--c-border": "#27272a",
+    "--c-text": "#e4e4e7",
+    "--c-text-muted": "#71717a",
+    "--c-productive": "#10ff9e",
+    "--c-unproductive": "#ff2d55",
+    "--c-neutral": "#8a8a93",
+    "--c-unclassified": "#ffb020",
+    "--c-void": "#0a0a0c",
+    "--c-productive-dim": "#0a9a60",
+    "--c-unproductive-dim": "#991b34",
+    "--c-neutral-dim": "#53535a",
+    "--c-unclassified-dim": "#996813",
+    "--c-void-dim": "#0a0a0c",
+    "--c-future-outline": "#2a2a30",
+    "--c-lock": "#d4d4d8",
+    "--c-accent": "#10ff9e"
+  }
+}

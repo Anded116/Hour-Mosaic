@@ -25,6 +25,8 @@ export interface EditorDeps {
   clearSegment: (dateKey: string, startMinute: number, endMinute: number) => Promise<void>;
   /** Re-fetches the day and pushes it into the store. */
   refreshDay: () => Promise<void>;
+  /** Optional surface for displaying invoke errors in the UI. */
+  onError?: (err: unknown, label: string) => void;
 }
 
 export class HourEditor {
@@ -73,7 +75,6 @@ export class HourEditor {
     const endAbs = range.hour * 60 + range.endMinute;
     try {
       if (choice.category === "void") {
-        // Sentinel: clear lock on the selected range.
         await this.deps.clearSegment(dateKey, startAbs, endAbs);
       } else {
         await this.deps.setSegment(
@@ -87,6 +88,7 @@ export class HourEditor {
       await this.deps.refreshDay();
     } catch (err) {
       console.error("set_segment failed", err);
+      this.deps.onError?.(err, "set_segment");
     }
   }
 

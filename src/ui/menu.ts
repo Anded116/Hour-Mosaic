@@ -1,5 +1,7 @@
 // Hamburger menu — opens as a popover anchored to the hamburger button.
 
+import { invoke } from "@tauri-apps/api/core";
+
 import { ipc } from "../state/ipc";
 
 export interface MenuDeps {
@@ -8,12 +10,12 @@ export interface MenuDeps {
   isAlwaysOnTop: () => boolean;
   setAlwaysOnTop: (on: boolean) => void;
   onAfterAction: () => void;
+  onError?: (err: unknown, label: string) => void;
 }
 
 interface MenuItem {
   label: string;
   shortcut?: string;
-  toggle?: boolean;
   action: () => Promise<void> | void;
 }
 
@@ -53,6 +55,9 @@ export class HamburgerMenu {
         this.close();
         try {
           await item.action();
+        } catch (err) {
+          console.error(`[menu] ${item.label} failed:`, err);
+          this.deps.onError?.(err, item.label);
         } finally {
           this.deps.onAfterAction();
         }
@@ -63,7 +68,6 @@ export class HamburgerMenu {
     document.body.appendChild(el);
     this.el = el;
 
-    // Position below-left of the hamburger.
     const rect = this.deps.hamburger.getBoundingClientRect();
     const margin = 6;
     const desiredLeft = rect.right - el.offsetWidth;
@@ -92,26 +96,26 @@ export class HamburgerMenu {
         label: "Mark break now",
         shortcut: "Ctrl+Shift+B",
         action: async () => {
-          await invokeCmd("mark_break_now");
+          await invoke("mark_break_now");
         },
       },
       {
         label: aot ? "Disable always on top" : "Enable always on top",
         action: async () => {
-          await invokeCmd("set_always_on_top", { on: !aot });
+          await invoke("set_always_on_top", { on: !aot });
           this.deps.setAlwaysOnTop(!aot);
         },
       },
       {
         label: "History",
         action: async () => {
-          await invokeCmd("open_history");
+          await invoke("open_history");
         },
       },
       {
         label: "Settings",
         action: async () => {
-          await invokeCmd("open_settings");
+          await invoke("open_settings");
         },
       },
     ];
@@ -136,9 +140,4 @@ export class HamburgerMenu {
   private keyHandler = (e: KeyboardEvent): void => {
     if (e.key === "Escape") this.close();
   };
-}
-
-async function invokeCmd(name: string, args?: Record<string, unknown>): Promise<void> {
-  const { invoke } = await import("@tauri-apps/api/core");
-  await invoke(name, args);
 }

@@ -10,8 +10,12 @@
   </head>
   <body class="window window--main">
     <div class="drag-region" data-tauri-drag-region></div>
-    <canvas id="mosaic" class="mosaic"></canvas>
-    <div id="ticker" class="ticker" aria-live="polite"></div>
+    <div class="mosaic-host">
+      <canvas id="mosaic" class="mosaic"></canvas>
+    </div>
+    <footer id="status-bar" class="status-bar">
+      <span id="ticker" class="ticker" aria-live="polite"></span>
+    </footer>
     <button id="hamburger" class="hamburger" aria-label="Menu">⋮</button>
   </body>
 </html>

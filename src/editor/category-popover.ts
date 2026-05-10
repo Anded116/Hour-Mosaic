@@ -76,7 +76,10 @@ export function showCategoryPopover(
     root.style.left = `${left}px`;
     root.style.top = `${top}px`;
 
-    window.addEventListener("pointerdown", outsideHandler, true);
-    window.addEventListener("keydown", keyHandler);
+    // Defer one tick so the pointerup that opened the popover doesn't trigger close.
+    setTimeout(() => {
+      window.addEventListener("pointerdown", outsideHandler, true);
+      window.addEventListener("keydown", keyHandler);
+    }, 0);
   });
 }

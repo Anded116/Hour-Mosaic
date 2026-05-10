@@ -64,11 +64,13 @@ export class MosaicRenderer {
 
   resize(): void {
     this.dpr = window.devicePixelRatio || 1;
-    const { clientWidth, clientHeight } = document.documentElement;
-    this.canvas.width = Math.max(1, Math.floor(clientWidth * this.dpr));
-    this.canvas.height = Math.max(1, Math.floor(clientHeight * this.dpr));
-    this.canvas.style.width = `${clientWidth}px`;
-    this.canvas.style.height = `${clientHeight}px`;
+    const host = this.canvas.parentElement ?? document.documentElement;
+    const w = host.clientWidth;
+    const h = host.clientHeight;
+    this.canvas.width = Math.max(1, Math.floor(w * this.dpr));
+    this.canvas.height = Math.max(1, Math.floor(h * this.dpr));
+    this.canvas.style.width = `${w}px`;
+    this.canvas.style.height = `${h}px`;
     this.scheduleRender();
   }
 

@@ -12,7 +12,8 @@ import { HamburgerMenu } from "./ui/menu";
 import { PausedOverlay } from "./ui/paused-overlay";
 
 const canvas = document.getElementById("mosaic") as HTMLCanvasElement | null;
-const ticker = document.getElementById("ticker") as HTMLDivElement | null;
+const ticker = document.getElementById("ticker") as HTMLSpanElement | null;
+const statusBar = document.getElementById("status-bar") as HTMLElement | null;
 const hamburger = document.getElementById("hamburger") as HTMLButtonElement | null;
 
 if (!canvas) throw new Error("#mosaic canvas missing");
@@ -22,6 +23,7 @@ const store = createDayStore(4);
 const pulse = new PulseLoop((alpha) => renderer.setPulseAlpha(alpha));
 
 let dayStartHour = 4;
+let lastTickerText = "◉ loading…";
 
 store.subscribe((snap) => renderer.setSnapshot(snap));
 renderer.resize();
@@ -29,7 +31,7 @@ pulse.start();
 
 window.addEventListener("resize", () => {
   renderer.resize();
-  updateTickerVisibility();
+  updateStatusVisibility();
 });
 
 document.addEventListener("visibilitychange", () => {
@@ -37,12 +39,31 @@ document.addEventListener("visibilitychange", () => {
   else pulse.stop();
 });
 
-function updateTickerVisibility(): void {
-  if (!ticker) return;
+function updateStatusVisibility(): void {
+  if (!statusBar) return;
   const level = detailLevel(document.documentElement.clientWidth, document.documentElement.clientHeight);
-  ticker.style.display = showsTicker(level) ? "" : "none";
+  statusBar.classList.toggle("status-bar--hidden", !showsTicker(level));
+  // Trigger a renderer resize because hiding the status bar changes mosaic-host height.
+  renderer.resize();
 }
-updateTickerVisibility();
+updateStatusVisibility();
+
+function setTicker(text: string): void {
+  lastTickerText = text;
+  if (ticker) ticker.textContent = text;
+}
+
+function flashError(err: unknown, label: string): void {
+  const msg = err instanceof Error ? err.message : String(err);
+  setTicker(`✕ ${label}: ${msg}`);
+  if (statusBar) {
+    statusBar.classList.add("status-bar--error");
+    window.setTimeout(() => {
+      statusBar.classList.remove("status-bar--error");
+      if (ticker) ticker.textContent = lastTickerText;
+    }, 4000);
+  }
+}
 
 window.setInterval(() => {
   store.setCurrentMinute(currentMinuteOfDay(dayStartHour));
@@ -63,6 +84,7 @@ if (hamburger) {
     onAfterAction: () => {
       void refreshState();
     },
+    onError: flashError,
   });
 }
 
@@ -93,6 +115,7 @@ const editor = new HourEditor({
       console.warn("refreshDay failed", err);
     }
   },
+  onError: flashError,
 });
 void editor; // keep alive
 
@@ -107,7 +130,7 @@ async function boot(): Promise<void> {
   } catch (err) {
     console.warn("backend get_day failed, falling back to mock", err);
     store.loadMock();
-    if (ticker) ticker.textContent = "◉ backend offline · mock day";
+    setTicker(`✕ backend offline: ${err}`);
     return;
   }
 
@@ -129,15 +152,14 @@ async function boot(): Promise<void> {
       paused = evt.paused;
       pausedOverlay.setVisible(paused);
     }
-    if (!ticker) return;
     if (paused) {
-      ticker.textContent = "◉ PAUSED";
+      setTicker("◉ PAUSED");
       return;
     }
     const proc = evt.process ?? "—";
     const head = evt.title ? evt.title.split(" — ")[0]!.slice(0, 64) : "";
     const idleSec = Math.floor(evt.idle_ms / 1000);
     const idleTag = idleSec > 60 ? ` · idle ${Math.floor(idleSec / 60)}m` : "";
-    ticker.textContent = `◉ ${proc} · ${head} · ${evt.category}${idleTag}`;
+    setTicker(`◉ ${proc} · ${head} · ${evt.category}${idleTag}`);
   });
 }

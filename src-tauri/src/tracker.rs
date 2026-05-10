@@ -72,7 +72,7 @@ pub fn start_tracker<R: tauri::Runtime>(
 
     {
         let db = db.clone();
-        tokio::spawn(async move {
+        tauri::async_runtime::spawn(async move {
             let cutoff = (chrono::Utc::now().timestamp()) - retention_days * 86_400;
             if let Err(err) = db.prune_samples_before(cutoff) {
                 tracing::warn!(?err, "sample prune failed");
@@ -82,7 +82,7 @@ pub fn start_tracker<R: tauri::Runtime>(
 
     let paused_for_loop = paused.clone();
 
-    tokio::spawn(async move {
+    tauri::async_runtime::spawn(async move {
         let mut ticker = tokio::time::interval(interval);
         ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
         loop {

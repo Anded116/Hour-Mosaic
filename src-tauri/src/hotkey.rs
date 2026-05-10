@@ -18,7 +18,7 @@ pub fn register<R: Runtime>(app: &AppHandle<R>) -> Result<()> {
             return;
         }
         let app = app_clone.clone();
-        tokio::spawn(async move {
+        tauri::async_runtime::spawn(async move {
             if let Some(state) = app.try_state::<AppState>() {
                 let state: tauri::State<AppState> = state;
                 if let Err(err) = mark_break_now_impl(&app, &state) {

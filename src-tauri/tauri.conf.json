@@ -25,6 +25,32 @@
         "resizable": true,
         "transparent": false,
         "shadow": true
+      },
+      {
+        "label": "history",
+        "title": "Hour Mosaic — History",
+        "url": "history.html",
+        "width": 900,
+        "height": 700,
+        "minWidth": 480,
+        "minHeight": 360,
+        "decorations": true,
+        "resizable": true,
+        "visible": false,
+        "alwaysOnTop": false
+      },
+      {
+        "label": "settings",
+        "title": "Hour Mosaic — Settings",
+        "url": "settings.html",
+        "width": 820,
+        "height": 640,
+        "minWidth": 480,
+        "minHeight": 360,
+        "decorations": true,
+        "resizable": true,
+        "visible": false,
+        "alwaysOnTop": false
       }
     ],
     "security": {

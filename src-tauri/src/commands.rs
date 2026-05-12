@@ -196,26 +196,22 @@ pub fn open_settings<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
 fn open_or_focus<R: Runtime>(
     app: &AppHandle<R>,
     label: &str,
-    url: &str,
-    title: &str,
-    width: f64,
-    height: f64,
-    always_on_top: bool,
+    _url: &str,
+    _title: &str,
+    _width: f64,
+    _height: f64,
+    _always_on_top: bool,
 ) -> Result<(), String> {
+    // The window is pre-declared in tauri.conf.json with `visible: false`, so we
+    // just unhide and focus it here.
     if let Some(win) = app.get_webview_window(label) {
         let _ = win.show();
+        let _ = win.unminimize();
         let _ = win.set_focus();
+        tracing::info!(label, "showing pre-declared window");
         return Ok(());
     }
-    let _win = tauri::WebviewWindowBuilder::new(app, label, tauri::WebviewUrl::App(url.into()))
-        .title(title)
-        .inner_size(width, height)
-        .always_on_top(always_on_top)
-        .decorations(true)
-        .resizable(true)
-        .build()
-        .map_err(|e| e.to_string())?;
-    Ok(())
+    Err(format!("window `{label}` not declared in tauri.conf.json"))
 }
 
 #[tauri::command]

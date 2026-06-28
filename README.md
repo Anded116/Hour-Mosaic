@@ -7,6 +7,8 @@ Tauri (Rust + system webview) with a tiny vanilla-TS frontend.
 It's meant for a second monitor: an always-on dashboard you glance at once or
 twice an hour, not an app you open. The shape and color of the day *is* the UI.
 
+![Hour Mosaic](screenshot-preview.png)
+
 ## Install
 
 Windows. Grab the latest installer (`Hour Mosaic_x.y.z_x64-setup.exe`) or the

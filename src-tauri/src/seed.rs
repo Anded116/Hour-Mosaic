@@ -10,6 +10,16 @@ pub struct SeedFile {
     pub version: u32,
     pub process_rules: Vec<SeedRule>,
     pub domain_rules: Vec<SeedRule>,
+    /// Exact source_key → category defaults (e.g. a browser's non-domain
+    /// catch-all entity). Seeded into the tracker's override map below user rules.
+    #[serde(default)]
+    pub source_rules: Vec<SourceRule>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SourceRule {
+    pub source_key: String,
+    pub category: Category,
 }
 
 #[derive(Debug, Deserialize)]

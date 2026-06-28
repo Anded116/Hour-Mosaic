@@ -17,6 +17,8 @@ export interface DragHandlers {
   layoutProvider: () => MosaicLayout | null;
   /** Hours strictly greater than this are non-editable (future). */
   maxEditableHour: () => number;
+  /** Gate on whether a new drag may begin (e.g. false while a popover is open). */
+  canStart?: () => boolean;
 }
 
 export class DragSelect {
@@ -41,6 +43,7 @@ export class DragSelect {
 
   private onPointerDown = (e: PointerEvent): void => {
     if (e.button !== 0) return;
+    if (this.handlers.canStart && !this.handlers.canStart()) return;
     const hit = this.hitFromEvent(e);
     if (!hit) return;
     if (hit.hour > this.handlers.maxEditableHour()) return;

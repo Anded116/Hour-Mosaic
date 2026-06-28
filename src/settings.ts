@@ -1,14 +1,16 @@
-// Settings window entry — tabbed UI: classification, day-start, hotkeys, privacy.
+// Settings window entry — tabbed UI: classification, grouping, day-start, hotkeys, privacy.
 
 import { ClassificationTable } from "./settings-ui/classification";
 import { mountDayStart } from "./settings-ui/day-start";
+import { mountGrouping } from "./settings-ui/grouping";
 import { mountPrivacy } from "./settings-ui/privacy";
 
-type PaneId = "classification" | "day-start" | "hotkeys" | "privacy";
+type PaneId = "classification" | "grouping" | "day-start" | "hotkeys" | "privacy";
 
 const nav = document.getElementById("settings-nav");
 const panes: Record<PaneId, HTMLElement | null> = {
   classification: document.getElementById("pane-classification"),
+  grouping: document.getElementById("pane-grouping"),
   "day-start": document.getElementById("pane-day-start"),
   hotkeys: document.getElementById("pane-hotkeys"),
   privacy: document.getElementById("pane-privacy"),
@@ -18,6 +20,7 @@ if (!nav) throw new Error("settings shell missing");
 
 const classification = panes.classification ? new ClassificationTable(panes.classification) : null;
 void classification?.load();
+if (panes.grouping) void mountGrouping(panes.grouping);
 if (panes["day-start"]) void mountDayStart(panes["day-start"]);
 if (panes.privacy) mountPrivacy(panes.privacy);
 

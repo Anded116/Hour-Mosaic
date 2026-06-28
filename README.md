@@ -15,6 +15,14 @@ Tauri (Rust + system webview) with a tiny vanilla-TS frontend.
 - **Foreground-window tracker** with built-in classification of common apps
   and domains; AFK > 5 min → neutral, with per-app overrides for video calls
   (stays active) and media players (counts as unproductive).
+- **Window grouping** (Settings → Grouping) — choose how windows collapse into
+  one tracked entity: *By application* (all Telegram chats / browser tabs as
+  one), *By site* (browsers split per domain — the default), or *By window*
+  (each window separate, with unread counts and the app's own name stripped so
+  near-identical titles still merge). Applies to new minutes immediately.
+- **Hover activity readout** — point at any minute and the contiguous run of
+  the same activity is framed together, with a tooltip showing the app/window,
+  the time span, its length, and category ("Telegram · 14:05–14:37 · 32 мин").
 - **Drag-n-drop edits** on past minutes; manual segments are locked so the
   auto-tracker never overwrites them.
 - **Global hotkey** `Ctrl+Shift+B` instantly marks the current minute as a

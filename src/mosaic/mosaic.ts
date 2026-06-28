@@ -33,6 +33,8 @@ export class MosaicRenderer {
   private cachedPalette: Palette | null = null;
   private renderQueued = false;
   private selection: MosaicSelection | null = null;
+  /** Absolute minutes (0..1439) of the activity run under the cursor, framed together. */
+  private hoverRun: number[] | null = null;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext("2d");
@@ -53,6 +55,12 @@ export class MosaicRenderer {
 
   setSelection(selection: MosaicSelection | null): void {
     this.selection = selection;
+    this.scheduleRender();
+  }
+
+  /** Highlights a contiguous activity run with a single unifying frame. */
+  setHoverRun(minutes: number[] | null): void {
+    this.hoverRun = minutes && minutes.length > 0 ? minutes : null;
     this.scheduleRender();
   }
 
@@ -142,10 +150,62 @@ export class MosaicRenderer {
       );
     }
 
+    if (this.hoverRun) {
+      drawActivityFrame(ctx, layout, this.hoverRun, palette);
+    }
+
     if (this.selection) {
       drawSelection(ctx, layout, this.selection, palette);
     }
   }
+}
+
+/**
+ * Frames a set of minute cells with a single outline by cancelling every edge
+ * shared between two cells in the set — what remains is the outer boundary of
+ * their union. Works for the irregular "staircase" shapes a contiguous minute
+ * run makes inside the wrapped sub-grid, and naturally yields one frame per
+ * hour-tile when a run crosses an hour boundary.
+ */
+function drawActivityFrame(
+  ctx: CanvasRenderingContext2D,
+  layout: MosaicLayout,
+  minutes: number[],
+  palette: Palette,
+): void {
+  const edges = new Map<string, [number, number, number, number]>();
+  const toggle = (ax: number, ay: number, bx: number, by: number): void => {
+    // Canonical endpoint order so the same edge from two cells collides.
+    const swap = bx < ax || (bx === ax && by < ay);
+    const [x1, y1, x2, y2] = swap ? [bx, by, ax, ay] : [ax, ay, bx, by];
+    const key = `${x1.toFixed(2)},${y1.toFixed(2)},${x2.toFixed(2)},${y2.toFixed(2)}`;
+    if (edges.has(key)) edges.delete(key);
+    else edges.set(key, [x1, y1, x2, y2]);
+  };
+
+  for (const abs of minutes) {
+    const r = minuteRect(layout, Math.floor(abs / 60), abs % 60);
+    const x0 = r.x;
+    const y0 = r.y;
+    const x1 = r.x + r.w;
+    const y1 = r.y + r.h;
+    toggle(x0, y0, x1, y0); // top
+    toggle(x1, y0, x1, y1); // right
+    toggle(x0, y1, x1, y1); // bottom
+    toggle(x0, y0, x0, y1); // left
+  }
+
+  ctx.save();
+  ctx.strokeStyle = palette.accent;
+  ctx.lineWidth = 2;
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  for (const [x1, y1, x2, y2] of edges.values()) {
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+  }
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawSelection(

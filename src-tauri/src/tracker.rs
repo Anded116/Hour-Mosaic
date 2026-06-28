@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -7,7 +9,7 @@ use tokio::sync::watch;
 
 use crate::aggregator::Aggregator;
 use crate::classifier::Classifier;
-use crate::config::Settings;
+use crate::config::{Settings, WindowGrouping};
 use crate::db::Db;
 use crate::events::{emit_current_activity, emit_tick, CurrentActivityPayload, TickPayload};
 use crate::types::{AfkBehavior, Category, Sample};
@@ -51,6 +53,12 @@ fn read_active_window() -> Option<(String, String)> {
 
 pub struct TrackerHandle {
     pub paused: Arc<Mutex<bool>>,
+    /// Live window-grouping granularity (`WindowGrouping` as u8) — updated by
+    /// `set_settings` and read by the tracker loop each tick.
+    pub grouping: Arc<AtomicU8>,
+    /// Live user classification overrides (source_key → category) — updated by
+    /// `reclassify_source` and applied by the tracker loop to future samples.
+    pub overrides: Arc<Mutex<HashMap<String, Category>>>,
     #[allow(dead_code)]
     pub shutdown: watch::Sender<bool>,
 }
@@ -61,6 +69,19 @@ pub fn start_tracker<R: tauri::Runtime>(
     settings: Settings,
 ) -> TrackerHandle {
     let paused = Arc::new(Mutex::new(settings.paused));
+    let grouping = Arc::new(AtomicU8::new(settings.window_grouping.as_u8()));
+
+    // Override map = seed source defaults (e.g. browser catch-alls) with user
+    // rules layered on top (user wins).
+    let mut override_map: HashMap<String, Category> = crate::seed::load_seed()
+        .source_rules
+        .into_iter()
+        .map(|r| (r.source_key, r.category))
+        .collect();
+    for (key, cat) in db.load_overrides().unwrap_or_default() {
+        override_map.insert(key, cat);
+    }
+    let overrides: Arc<Mutex<HashMap<String, Category>>> = Arc::new(Mutex::new(override_map));
     let (shutdown_tx, mut shutdown_rx) = watch::channel(false);
 
     let classifier = Arc::new(Mutex::new(Classifier::new()));
@@ -80,7 +101,22 @@ pub fn start_tracker<R: tauri::Runtime>(
         });
     }
 
+    // One-shot backfill: apply seed/override classification to minutes that were
+    // recorded as `unclassified` before the rules existed, so the history and the
+    // classification UI reflect the current rules without manual re-tagging.
+    {
+        let db = db.clone();
+        let classifier = classifier.clone();
+        let overrides = overrides.clone();
+        let grouping_val = settings.window_grouping;
+        tauri::async_runtime::spawn(async move {
+            backfill_unclassified(&db, &classifier, &overrides, grouping_val);
+        });
+    }
+
     let paused_for_loop = paused.clone();
+    let grouping_for_loop = grouping.clone();
+    let overrides_for_loop = overrides.clone();
 
     tauri::async_runtime::spawn(async move {
         let mut ticker = tokio::time::interval(interval);
@@ -118,9 +154,15 @@ pub fn start_tracker<R: tauri::Runtime>(
                 tracing::warn!(?err, "insert_sample failed");
             }
 
+            let grouping = WindowGrouping::from_u8(grouping_for_loop.load(Ordering::Relaxed));
             let classifier_guard = classifier.lock();
-            let classification = classifier_guard.classify(&sample);
+            let mut classification = classifier_guard.classify(&sample, grouping);
             drop(classifier_guard);
+
+            // User overrides (set via the classification UI) win over seed rules.
+            if let Some(cat) = overrides_for_loop.lock().get(&classification.source_key).copied() {
+                classification.category = cat;
+            }
 
             let effective_category =
                 apply_afk(classification.category, classification.afk, idle_ms, afk_threshold);
@@ -168,7 +210,53 @@ pub fn start_tracker<R: tauri::Runtime>(
 
     TrackerHandle {
         paused,
+        grouping,
+        overrides,
         shutdown: shutdown_tx,
+    }
+}
+
+/// Re-runs the classifier (plus overrides) over every still-`unclassified`,
+/// unlocked minute and recolors those that now match a rule. Reconstructs the
+/// process from the stored `source_key` (the part before `::`) and uses the
+/// stored title; grouping is irrelevant here since only the category is applied.
+fn backfill_unclassified(
+    db: &Db,
+    classifier: &Mutex<Classifier>,
+    overrides: &Mutex<HashMap<String, Category>>,
+    grouping: WindowGrouping,
+) {
+    let pairs = match db.unclassified_source_pairs() {
+        Ok(p) => p,
+        Err(err) => {
+            tracing::warn!(?err, "backfill: failed to list unclassified sources");
+            return;
+        }
+    };
+
+    let mut changed = 0usize;
+    for (key, title) in pairs {
+        let process = key.split("::").next().unwrap_or(key.as_str()).to_string();
+        let sample = Sample {
+            ts: 0,
+            process: Some(process),
+            title: title.clone(),
+            browser_domain: None,
+            idle_ms: 0,
+        };
+        let mut category = classifier.lock().classify(&sample, grouping).category;
+        if let Some(cat) = overrides.lock().get(&key).copied() {
+            category = cat;
+        }
+        if category != Category::Unclassified {
+            match db.apply_category(&key, title.as_deref(), category) {
+                Ok(n) => changed += n,
+                Err(err) => tracing::warn!(?err, key, "backfill: update failed"),
+            }
+        }
+    }
+    if changed > 0 {
+        tracing::info!(changed, "backfill reclassified historical minutes");
     }
 }
 

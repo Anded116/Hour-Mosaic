@@ -12,7 +12,7 @@ mod types;
 
 use std::sync::Arc;
 
-use tauri::Manager;
+use tauri::{Manager, WindowEvent};
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 use crate::config::Settings;
@@ -73,6 +73,32 @@ pub fn run() {
             if let Err(err) = hotkey::register(app.handle()) {
                 tracing::warn!(?err, "global shortcut registration failed");
             }
+
+            // Pre-declared secondary windows (history, settings) must hide on
+            // close, not destroy — otherwise `get_webview_window(label)` returns
+            // None on the second invocation and `open_history` / `open_settings`
+            // fail with "window not declared". After hiding, we also re-sync
+            // main's always-on-top flag (it was forced OFF while the secondary
+            // was visible to keep it from being obscured).
+            let app_handle = app.handle().clone();
+            for label in ["history", "settings"] {
+                if let Some(win) = app.get_webview_window(label) {
+                    let win_clone = win.clone();
+                    let app_for_event = app_handle.clone();
+                    win.on_window_event(move |event| {
+                        if let WindowEvent::CloseRequested { api, .. } = event {
+                            api.prevent_close();
+                            let _ = win_clone.hide();
+                            commands::sync_main_always_on_top(&app_for_event, Some(label));
+                        }
+                    });
+                }
+            }
+
+            // Apply the persisted always-on-top preference to the main window.
+            // tauri.conf.json declares it AOT-on; if the user previously turned
+            // it off, this corrects the actual flag on boot.
+            commands::sync_main_always_on_top(&app_handle, None);
 
             Ok(())
         })

@@ -205,22 +205,91 @@ impl Db {
     pub fn list_sources(&self, limit: u32) -> Result<Vec<DiscoveredApp>> {
         let conn = self.conn.lock();
         let mut stmt = conn.prepare(
-            "SELECT source_key, MIN(source_title), 0, COUNT(*)
-             FROM minutes
-             WHERE source_key IS NOT NULL
-             GROUP BY source_key
+            "SELECT m.source_key, MIN(m.source_title), 0, COUNT(*),
+                    (SELECT category FROM minutes m2
+                     WHERE m2.source_key = m.source_key
+                     GROUP BY category ORDER BY COUNT(*) DESC LIMIT 1)
+             FROM minutes m
+             WHERE m.source_key IS NOT NULL
+             GROUP BY m.source_key
              ORDER BY COUNT(*) DESC
              LIMIT ?",
         )?;
         let rows = stmt.query_map(params![limit as i64], |row| {
+            let cat: Option<String> = row.get(4)?;
             Ok(DiscoveredApp {
                 source_key: row.get(0)?,
                 sample_title: row.get(1)?,
                 first_seen_ts: row.get::<_, i64>(2)?,
                 minutes_seen: row.get::<_, i64>(3)? as u32,
+                current_category: cat
+                    .as_deref()
+                    .and_then(Category::parse)
+                    .unwrap_or(Category::Unclassified),
             })
         })?;
         Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
+    }
+
+    /// User classification overrides (source_key → category) for the tracker to
+    /// apply to future samples. Stored by `reclassify_source`.
+    pub fn load_overrides(&self) -> Result<Vec<(String, Category)>> {
+        let conn = self.conn.lock();
+        let mut stmt =
+            conn.prepare("SELECT pattern, category FROM rules WHERE source = 'user'")?;
+        let rows = stmt.query_map([], |row| {
+            let key: String = row.get(0)?;
+            let cat: String = row.get(1)?;
+            Ok((key, cat))
+        })?;
+        let mut out = Vec::new();
+        for r in rows {
+            let (key, cat) = r?;
+            if let Some(c) = Category::parse(&cat) {
+                out.push((key, c));
+            }
+        }
+        Ok(out)
+    }
+
+    /// Distinct (source_key, source_title) among still-unclassified, unlocked
+    /// minutes — the work-list for the startup backfill pass.
+    pub fn unclassified_source_pairs(&self) -> Result<Vec<(String, Option<String>)>> {
+        let conn = self.conn.lock();
+        let mut stmt = conn.prepare(
+            "SELECT DISTINCT source_key, source_title
+             FROM minutes
+             WHERE category = 'unclassified' AND locked = 0 AND source_key IS NOT NULL",
+        )?;
+        let rows = stmt.query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?))
+        })?;
+        Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
+    }
+
+    /// Recolors still-unclassified, unlocked minutes of one (source_key, title)
+    /// — used by the backfill pass to apply seed/override classification to
+    /// history without touching manual edits or already-classified minutes.
+    pub fn apply_category(
+        &self,
+        source_key: &str,
+        title: Option<&str>,
+        category: Category,
+    ) -> Result<usize> {
+        let conn = self.conn.lock();
+        let n = match title {
+            Some(t) => conn.execute(
+                "UPDATE minutes SET category = ? WHERE source_key = ? AND source_title = ?
+                 AND category = 'unclassified' AND locked = 0",
+                params![category.as_str(), source_key, t],
+            )?,
+            None => conn.execute(
+                "UPDATE minutes SET category = ? WHERE source_key = ? AND source_title IS NULL
+                 AND category = 'unclassified' AND locked = 0",
+                params![category.as_str(), source_key],
+            )?,
+        };
+        Ok(n)
     }
 
     pub fn reclassify_source(&self, source_key: &str, category: Category) -> Result<usize> {
@@ -256,7 +325,7 @@ impl Db {
     pub fn unclassified_apps(&self, limit: u32) -> Result<Vec<DiscoveredApp>> {
         let conn = self.conn.lock();
         let mut stmt = conn.prepare(
-            "SELECT source_key, MIN(source_title), MIN(strftime('%s', 'now')), COUNT(*)
+            "SELECT source_key, MIN(source_title), CAST(strftime('%s', 'now') AS INTEGER), COUNT(*)
              FROM minutes
              WHERE category = 'unclassified' AND source_key IS NOT NULL
              GROUP BY source_key
@@ -269,6 +338,7 @@ impl Db {
                 sample_title: row.get(1)?,
                 first_seen_ts: row.get::<_, i64>(2)?,
                 minutes_seen: row.get::<_, i64>(3)? as u32,
+                current_category: Category::Unclassified,
             })
         })?;
         Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
@@ -311,4 +381,53 @@ fn migrate(conn: &mut Connection) -> Result<()> {
         conn.execute_batch("PRAGMA user_version = 1")?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::{Category, MinuteCell};
+
+    fn temp_db() -> Db {
+        let mut p = std::env::temp_dir();
+        p.push(format!("hm-test-db-{}.sqlite", std::process::id()));
+        let _ = std::fs::remove_file(&p);
+        Db::open(&p).expect("open temp db")
+    }
+
+    fn cell(min: u16, cat: Category, key: &str) -> MinuteCell {
+        MinuteCell {
+            minute_of_day: min,
+            category: cat,
+            source_key: Some(key.to_string()),
+            source_title: Some("title".into()),
+            locked: false,
+            preset_id: None,
+        }
+    }
+
+    #[test]
+    fn source_listings_and_overrides_round_trip() {
+        let db = temp_db();
+        db.upsert_minute("2026-06-28", &cell(0, Category::Productive, "Code.exe")).unwrap();
+        db.upsert_minute("2026-06-28", &cell(1, Category::Productive, "Code.exe")).unwrap();
+        db.upsert_minute("2026-06-28", &cell(2, Category::Unclassified, "mystery.exe")).unwrap();
+
+        let sources = db.list_sources(50).unwrap();
+        assert!(sources
+            .iter()
+            .any(|s| s.source_key == "Code.exe" && s.current_category == Category::Productive));
+
+        // Regression: strftime('%s','now') is TEXT — reading it as i64 used to error
+        // out the whole query, surfacing as "Failed to load classification list".
+        let unclassified = db.unclassified_apps(50).unwrap();
+        assert!(unclassified.iter().any(|s| s.source_key == "mystery.exe"));
+
+        // A user override persists as a rule and reloads for the tracker.
+        db.reclassify_source("mystery.exe", Category::Neutral).unwrap();
+        let overrides = db.load_overrides().unwrap();
+        assert!(overrides
+            .iter()
+            .any(|(k, c)| k == "mystery.exe" && *c == Category::Neutral));
+    }
 }

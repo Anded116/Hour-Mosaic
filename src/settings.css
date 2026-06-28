@@ -187,3 +187,69 @@
 .mono {
   font-family: var(--font-mono);
 }
+
+.settings__pane-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 4px;
+  color: var(--c-text);
+}
+
+.settings__radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.settings__radio {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.settings__radio:hover {
+  border-color: var(--c-text-muted);
+}
+
+.settings__radio input {
+  margin-top: 2px;
+  accent-color: var(--c-accent);
+}
+
+.settings__radio-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settings__radio-label {
+  font-size: 13px;
+  color: var(--c-text);
+}
+
+.settings__radio-hint {
+  font-size: 11px;
+  color: var(--c-text-muted);
+}
+
+.settings__bulk {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 8px 10px;
+  background: var(--c-bg-elevated);
+  border: 1px solid var(--c-accent);
+  border-radius: 4px;
+}
+
+.settings__bulk-count {
+  font-size: 12px;
+  color: var(--c-text);
+  margin-right: auto;
+}

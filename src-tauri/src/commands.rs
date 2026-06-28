@@ -45,6 +45,7 @@ pub fn get_current_state(state: State<'_, AppState>) -> Result<CurrentState, Str
         current_activity: None,
         idle_ms: 0,
         paused: state.is_paused(),
+        always_on_top: state.desired_main_aot(),
     })
 }
 
@@ -89,10 +90,16 @@ pub fn reclassify_source(
     category: String,
 ) -> Result<usize, String> {
     let cat = Category::parse(&category).ok_or_else(|| format!("unknown category {category}"))?;
-    state
+    let updated = state
         .db
         .reclassify_source(&source_key, cat)
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    // Apply the override live so the tracker classifies future minutes the same way.
+    if let Some(t) = &*state.tracker.lock() {
+        t.overrides.lock().insert(source_key, cat);
+    }
+    Ok(updated)
 }
 
 #[tauri::command]
@@ -109,6 +116,7 @@ pub fn get_settings(state: State<'_, AppState>) -> Result<crate::config::Setting
 pub fn set_settings(
     state: State<'_, AppState>,
     day_start_hour: Option<u8>,
+    window_grouping: Option<String>,
 ) -> Result<(), String> {
     let mut s = state.settings.lock();
     if let Some(h) = day_start_hour {
@@ -117,8 +125,22 @@ pub fn set_settings(
         }
         s.day_start_hour = h;
     }
+    if let Some(g) = &window_grouping {
+        let parsed = crate::config::WindowGrouping::parse(g)
+            .ok_or_else(|| format!("unknown window_grouping `{g}`"))?;
+        s.window_grouping = parsed;
+    }
     let json = serde_json::to_string(&*s).map_err(|e| e.to_string())?;
     drop(s);
+
+    // Propagate grouping to the running tracker so it takes effect immediately.
+    if let Some(parsed) = window_grouping.as_deref().and_then(crate::config::WindowGrouping::parse) {
+        if let Some(t) = &*state.tracker.lock() {
+            t.grouping
+                .store(parsed.as_u8(), std::sync::atomic::Ordering::Relaxed);
+        }
+    }
+
     state.db.set_setting("settings", &json).map_err(|e| e.to_string())
 }
 
@@ -185,23 +207,15 @@ pub fn mark_break_now_impl<R: Runtime>(
 
 #[tauri::command]
 pub fn open_history<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
-    open_or_focus(&app, "history", "history.html", "Hour Mosaic — History", 900.0, 700.0, false)
+    open_or_focus(&app, "history")
 }
 
 #[tauri::command]
 pub fn open_settings<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
-    open_or_focus(&app, "settings", "settings.html", "Hour Mosaic — Settings", 820.0, 640.0, false)
+    open_or_focus(&app, "settings")
 }
 
-fn open_or_focus<R: Runtime>(
-    app: &AppHandle<R>,
-    label: &str,
-    _url: &str,
-    _title: &str,
-    _width: f64,
-    _height: f64,
-    _always_on_top: bool,
-) -> Result<(), String> {
+fn open_or_focus<R: Runtime>(app: &AppHandle<R>, label: &str) -> Result<(), String> {
     // The window is pre-declared in tauri.conf.json with `visible: false`, so we
     // just unhide and focus it here.
     if let Some(win) = app.get_webview_window(label) {
@@ -209,6 +223,7 @@ fn open_or_focus<R: Runtime>(
         let _ = win.unminimize();
         let _ = win.set_focus();
         tracing::info!(label, "showing pre-declared window");
+        sync_main_always_on_top(app, None);
         return Ok(());
     }
     Err(format!("window `{label}` not declared in tauri.conf.json"))
@@ -216,10 +231,41 @@ fn open_or_focus<R: Runtime>(
 
 #[tauri::command]
 pub fn set_always_on_top<R: Runtime>(app: AppHandle<R>, on: bool) -> Result<(), String> {
-    if let Some(win) = app.get_webview_window("main") {
-        win.set_always_on_top(on).map_err(|e| e.to_string())?;
+    if let Some(state) = app.try_state::<AppState>() {
+        state.set_desired_main_aot(on);
     }
+    sync_main_always_on_top(&app, None);
     Ok(())
+}
+
+/// Reconcile the actual `alwaysOnTop` flag on the main window with the user's
+/// desired value, with one override: if any secondary window (history /
+/// settings) is currently visible, force main to non-AOT so the secondary can
+/// sit above it. Called from every show/hide/toggle path.
+///
+/// `closing` is the label of a window that is being hidden right now (from its
+/// `CloseRequested` handler). Its `is_visible()` may still report `true` until
+/// the platform applies the `hide()`, so we treat it as already-gone instead of
+/// relying on the timing of the hide.
+pub fn sync_main_always_on_top<R: Runtime>(app: &AppHandle<R>, closing: Option<&str>) {
+    let desired = app
+        .try_state::<AppState>()
+        .map(|s| s.desired_main_aot())
+        .unwrap_or(true);
+    let any_secondary_visible = ["history", "settings"]
+        .iter()
+        .filter(|label| closing != Some(**label))
+        .any(|label| {
+            app.get_webview_window(label)
+                .and_then(|w| w.is_visible().ok())
+                .unwrap_or(false)
+        });
+    let effective = desired && !any_secondary_visible;
+    if let Some(main) = app.get_webview_window("main") {
+        if let Err(err) = main.set_always_on_top(effective) {
+            tracing::warn!(?err, "failed to set main always_on_top");
+        }
+    }
 }
 
 fn today_key(day_start_hour: u8) -> String {

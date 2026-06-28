@@ -16,7 +16,10 @@ export interface DiscoveredApp {
   sample_title: string | null;
   first_seen_ts: number;
   minutes_seen: number;
+  current_category: Category;
 }
+
+export type WindowGrouping = "app" | "site" | "window";
 
 export interface SettingsPayload {
   day_start_hour: number;
@@ -24,6 +27,7 @@ export interface SettingsPayload {
   sample_interval_ms: number;
   sample_retention_days: number;
   paused: boolean;
+  window_grouping: WindowGrouping;
 }
 
 export const ipc = {
@@ -40,7 +44,7 @@ export const ipc = {
     invoke<number>("reclassify_source", { sourceKey, category }),
   wipeData: () => invoke<void>("wipe_data"),
   getSettings: () => invoke<SettingsPayload>("get_settings"),
-  setSettings: (patch: Partial<Pick<SettingsPayload, "day_start_hour">>) =>
+  setSettings: (patch: Partial<Pick<SettingsPayload, "day_start_hour" | "window_grouping">>) =>
     invoke<void>("set_settings", patch),
   setSegment: (
     dateKey: string,

@@ -58,6 +58,33 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* Let the user drag-select the text to copy it manually as well. */
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.status-copy {
+  flex: 0 0 auto;
+  margin-left: 6px;
+  padding: 0 6px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--c-border);
+  border-radius: 3px;
+  color: var(--c-text-muted);
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  /* Status bar is a window drag-region; the button must opt out to be clickable. */
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.status-copy:hover {
+  color: var(--c-text);
+  border-color: var(--c-text-muted);
 }
 
 .hamburger {
@@ -97,6 +124,21 @@
   pointer-events: none;
   white-space: nowrap;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
+  max-width: 320px;
+}
+
+.hm-tip-title {
+  font-family: var(--font-sans, system-ui, sans-serif);
+  font-size: 12px;
+  color: var(--c-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hm-tip-sub {
+  margin-top: 2px;
+  color: var(--c-text-muted);
+  font-size: 10px;
 }
 
 .hm-popover {
@@ -114,10 +156,11 @@
 }
 
 .hm-popover__choice {
-  display: flex;
+  display: grid;
+  grid-template-columns: 14px 1fr auto;
   align-items: center;
-  justify-content: space-between;
-  padding: 6px 8px;
+  gap: 10px;
+  padding: 6px 10px;
   background: transparent;
   border: 1px solid transparent;
   color: var(--c-text);
@@ -133,16 +176,29 @@
   border-color: var(--c-border);
 }
 
-.hm-popover__choice[data-category="productive"]::before { content: "■"; color: var(--c-productive); margin-right: 8px; }
-.hm-popover__choice[data-category="unproductive"]::before { content: "■"; color: var(--c-unproductive); margin-right: 8px; }
-.hm-popover__choice[data-category="neutral"]::before { content: "■"; color: var(--c-neutral); margin-right: 8px; }
-.hm-popover__choice[data-category="void"]::before { content: "○"; color: var(--c-text-muted); margin-right: 8px; }
+.hm-popover__choice::before {
+  /* Column 1: colored swatch. */
+  font-size: 13px;
+  line-height: 1;
+  text-align: center;
+}
+
+.hm-popover__choice[data-category="productive"]::before  { content: "\25A0"; color: var(--c-productive); }
+.hm-popover__choice[data-category="unproductive"]::before{ content: "\25A0"; color: var(--c-unproductive); }
+.hm-popover__choice[data-category="neutral"]::before     { content: "\25A0"; color: var(--c-neutral); }
+.hm-popover__choice[data-category="void"]::before        { content: "\21BB"; color: var(--c-text-muted); }
+
+.hm-popover__label {
+  /* Column 2: primary label, left-aligned. */
+  white-space: nowrap;
+}
 
 .hm-popover__hint {
-  margin-left: 12px;
+  /* Column 3: secondary description, right-aligned via grid auto. */
   color: var(--c-text-muted);
   font-size: 10px;
   font-family: var(--font-mono);
+  white-space: nowrap;
 }
 
 .hm-menu {

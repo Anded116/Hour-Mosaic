@@ -71,6 +71,10 @@ pub struct CurrentState {
     pub current_activity: Option<String>,
     pub idle_ms: u64,
     pub paused: bool,
+    /// User's desired always-on-top for the main window (the persisted value,
+    /// not the temporarily-overridden effective flag). Lets the frontend menu
+    /// reflect the real choice on boot.
+    pub always_on_top: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -98,4 +102,6 @@ pub struct DiscoveredApp {
     pub sample_title: Option<String>,
     pub first_seen_ts: i64,
     pub minutes_seen: u32,
+    /// Dominant stored category for this source — what the classification UI shows.
+    pub current_category: Category,
 }

@@ -35,6 +35,7 @@ export interface CurrentState {
   current_activity: string | null;
   idle_ms: number;
   paused: boolean;
+  always_on_top: boolean;
 }
 
 export interface Preset {

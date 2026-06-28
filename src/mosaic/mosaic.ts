@@ -1,12 +1,13 @@
 // Top-level Canvas orchestrator for the day mosaic.
 
-import type { DayData, MinuteCell } from "../types";
+import type { Category, DayData, MinuteCell } from "../types";
 import { minuteRect, solveLayout, type MosaicLayout } from "./layout";
 import { detailLevel } from "./progressive";
 import {
   type HourData,
   drawCurrentHourBadge,
   drawCurrentMinuteMarker,
+  drawCurrentMinuteProgress,
   drawTile,
   readPalette,
   type Palette,
@@ -35,6 +36,8 @@ export class MosaicRenderer {
   private selection: MosaicSelection | null = null;
   /** Absolute minutes (0..1439) of the activity run under the cursor, framed together. */
   private hoverRun: number[] | null = null;
+  /** Live category of the in-progress minute — colors its progress fill. */
+  private currentActivityCategory: Category | null = null;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext("2d");
@@ -61,6 +64,12 @@ export class MosaicRenderer {
   /** Highlights a contiguous activity run with a single unifying frame. */
   setHoverRun(minutes: number[] | null): void {
     this.hoverRun = minutes && minutes.length > 0 ? minutes : null;
+    this.scheduleRender();
+  }
+
+  /** Live category of the current activity — used to color the minute progress fill. */
+  setCurrentActivityCategory(category: Category | null): void {
+    this.currentActivityCategory = category;
     this.scheduleRender();
   }
 
@@ -133,13 +142,16 @@ export class MosaicRenderer {
 
     const currentHourIndex = Math.floor(this.snapshot.currentMinute / 60);
     if (currentHourIndex >= 0 && currentHourIndex < 24) {
-      drawCurrentMinuteMarker(
-        ctx,
-        layout,
-        currentHourIndex,
-        this.snapshot.currentMinute - currentHourIndex * 60,
-        palette,
-      );
+      const minuteInHour = this.snapshot.currentMinute - currentHourIndex * 60;
+      // Seconds elapsed within the current minute → a progress fill in its cell.
+      // Drawn each frame (the pulse loop keeps render running) so it grows live.
+      const now = new Date();
+      const progress = (now.getSeconds() + now.getMilliseconds() / 1000) / 60;
+      const fillColor = this.currentActivityCategory
+        ? palette.bright[this.currentActivityCategory]
+        : palette.accent;
+      drawCurrentMinuteProgress(ctx, layout, currentHourIndex, minuteInHour, progress, fillColor);
+      drawCurrentMinuteMarker(ctx, layout, currentHourIndex, minuteInHour, palette);
       drawCurrentHourBadge(
         ctx,
         layout,

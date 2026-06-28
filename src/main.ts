@@ -11,6 +11,7 @@ import { onCurrentActivity, onDayChanged, onTick } from "./state/events";
 import { ipc } from "./state/ipc";
 import { HamburgerMenu } from "./ui/menu";
 import { PausedOverlay } from "./ui/paused-overlay";
+import type { Category } from "./types";
 
 const canvas = document.getElementById("mosaic") as HTMLCanvasElement | null;
 const ticker = document.getElementById("ticker") as HTMLSpanElement | null;
@@ -25,12 +26,35 @@ if (!canvas) throw new Error("#mosaic canvas missing");
 
 const renderer = new MosaicRenderer(canvas);
 const store = createDayStore(4);
-const pulse = new PulseLoop((alpha) => renderer.setPulseAlpha(alpha));
+// The pulse loop runs ~30fps while visible; piggyback the minute-rollover check
+// on it so the current-minute pointer and the optimistic fill stay frame-synced
+// with the progress bar (no black gap when a minute completes).
+const pulse = new PulseLoop((alpha) => {
+  renderer.setPulseAlpha(alpha);
+  tickMinute();
+});
 
 let dayStartHour = 4;
 let lastTickerText = "◉ loading…";
 /** Full text of the most recent error, kept for the copy button after the ticker reverts. */
 let lastErrorText = "";
+/** Latest live activity (from hm:current-activity) — colors the in-progress minute
+ * and optimistically fills a minute the instant it rolls over, before its tick lands. */
+let liveCategory: Category | null = null;
+let liveSource: string | null = null;
+let liveTitle: string | null = null;
+
+/** Advance the current-minute pointer to wall-clock time; when it rolls, color the
+ * just-completed minute with the live activity so it never flashes void. */
+function tickMinute(): void {
+  const m = currentMinuteOfDay(dayStartHour);
+  const cur = store.get().currentMinute;
+  if (m === cur) return;
+  if (!paused && liveCategory !== null && cur === (m - 1 + 1440) % 1440) {
+    store.applyTick(cur, liveCategory, liveSource, liveTitle);
+  }
+  store.setCurrentMinute(m);
+}
 
 store.subscribe((snap) => renderer.setSnapshot(snap));
 renderer.resize();
@@ -110,9 +134,8 @@ winCloseBtn?.addEventListener("click", () => {
   ipc.quitApp().catch((err) => console.error("quit failed", err));
 });
 
-window.setInterval(() => {
-  store.setCurrentMinute(currentMinuteOfDay(dayStartHour));
-}, 30_000);
+// Backup for when the pulse loop is paused (window hidden): still roll minutes.
+window.setInterval(tickMinute, 1_000);
 
 let paused = false;
 let alwaysOnTop = true;
@@ -237,6 +260,12 @@ async function boot(): Promise<void> {
       paused = evt.paused;
       pausedOverlay.setVisible(paused);
     }
+    // Remember the live activity so the in-progress minute's fill is its color
+    // and a rolled-over minute can be colored instantly (see tickMinute).
+    liveCategory = evt.category;
+    liveSource = evt.source_key;
+    liveTitle = evt.title;
+    renderer.setCurrentActivityCategory(evt.category);
     if (paused) {
       setTicker("◉ PAUSED");
       return;

@@ -40,7 +40,9 @@ export function createDayStore(dayStartHour = 4): DayStore {
       emit();
     },
     setCurrentMinute(min) {
-      snap = { ...snap, currentMinute: clamp(min, 0, 1439) };
+      const v = clamp(min, 0, 1439);
+      if (v === snap.currentMinute) return; // no-op when the minute hasn't rolled
+      snap = { ...snap, currentMinute: v };
       emit();
     },
     applyTick(minute, category, sourceKey, sourceTitle) {

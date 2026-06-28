@@ -183,6 +183,26 @@ function drawHourLabel(
   ctx.globalAlpha = 1;
 }
 
+/** Fills the current minute cell left-to-right by `progress` (0..1) — a tiny
+ * progress bar for the seconds elapsed within the in-progress minute. */
+export function drawCurrentMinuteProgress(
+  ctx: CanvasRenderingContext2D,
+  layout: MosaicLayout,
+  hourIndex: number,
+  minuteInHour: number,
+  progress: number,
+  color: string,
+): void {
+  if (minuteInHour < 0 || minuteInHour > 59) return;
+  const p = Math.max(0, Math.min(1, progress));
+  if (p <= 0) return;
+  const mr = minuteRect(layout, hourIndex, minuteInHour);
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.fillRect(mr.x, mr.y, mr.w * p, Math.max(1, mr.h));
+  ctx.restore();
+}
+
 export function drawCurrentMinuteMarker(
   ctx: CanvasRenderingContext2D,
   layout: MosaicLayout,

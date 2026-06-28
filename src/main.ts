@@ -232,13 +232,12 @@ async function boot(): Promise<void> {
     const proc = evt.process ?? "—";
     const head = evt.title ? evt.title.split(" — ")[0]!.slice(0, 64) : "";
     const idleSec = Math.floor(evt.idle_ms / 1000);
-    const thrSec = Math.round(evt.afk_threshold_ms / 1000);
+    const idleStr = idleSec >= 60 ? `${Math.floor(idleSec / 60)}m` : `${idleSec}s`;
     if (evt.idle_break) {
-      // Idle crossed the threshold — this minute is a break, not the app.
-      setTicker(`💤 Away (idle ${idleSec}s / thr ${thrSec}s) · was ${proc}`);
+      setTicker(`💤 Away (idle ${idleStr}) · was ${proc}`);
     } else {
-      // idle/threshold shown inline for now to make AFK behavior observable.
-      setTicker(`◉ ${proc} · ${head} · ${evt.category} · idle ${idleSec}s/${thrSec}s`);
+      const idleTag = idleSec >= 10 ? ` · idle ${idleStr}` : "";
+      setTicker(`◉ ${proc} · ${head} · ${evt.category}${idleTag}`);
     }
   });
 }

@@ -34,19 +34,22 @@ const heatmap = new MonthHeatmap(heatmapEl, {
 });
 
 let summariesByKey = new Map<string, DaySummary>();
-let selectedDate = monthTodayKey();
+let dayStartHour = 4;
+let today = monthTodayKey(dayStartHour);
+let minKey = dateKeyOffset(today, -(HEATMAP_DAYS - 1));
+let selectedDate = today;
 
 window.addEventListener("resize", () => drill.resize());
 
 prevBtn?.addEventListener("click", () => {
-  selectedDate = dateKeyOffset(selectedDate, -1);
+  const prev = dateKeyOffset(selectedDate, -1);
+  selectedDate = prev < minKey ? minKey : prev; // don't escape the 30-day window
   heatmap.setSelected(selectedDate);
   void loadDrill(selectedDate);
 });
 nextBtn?.addEventListener("click", () => {
-  const today = monthTodayKey();
   const next = dateKeyOffset(selectedDate, 1);
-  selectedDate = next > today ? today : next;
+  selectedDate = next > today ? today : next; // can't go past today
   heatmap.setSelected(selectedDate);
   void loadDrill(selectedDate);
 });
@@ -59,12 +62,21 @@ window.addEventListener("keydown", (e) => {
 void boot();
 
 async function boot(): Promise<void> {
-  const today = monthTodayKey();
-  const startKey = dateKeyOffset(today, -(HEATMAP_DAYS - 1));
+  // Align the day-key scheme with the backend's configured day-start hour.
   try {
-    const summaries = await ipc.getDayRange(startKey, today);
+    const settings = await ipc.getSettings();
+    dayStartHour = settings.day_start_hour;
+  } catch (err) {
+    console.warn("getSettings failed, assuming day start 04:00", err);
+  }
+  today = monthTodayKey(dayStartHour);
+  minKey = dateKeyOffset(today, -(HEATMAP_DAYS - 1));
+  selectedDate = today;
+
+  try {
+    const summaries = await ipc.getDayRange(minKey, today);
     summariesByKey = new Map(summaries.map((s) => [s.date_key, s]));
-    heatmap.setData(summariesByKey);
+    heatmap.setData(summariesByKey, today);
     heatmap.setSelected(selectedDate);
     renderMetrics(summaries);
   } catch (err) {

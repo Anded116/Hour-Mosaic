@@ -6,7 +6,7 @@ import { MosaicRenderer } from "./mosaic/mosaic";
 import { PulseLoop } from "./mosaic/pulse";
 import { detailLevel, showsTicker } from "./mosaic/progressive";
 import { createDayStore, currentMinuteOfDay, todayKey } from "./state/day-store";
-import { onCurrentActivity, onTick } from "./state/events";
+import { onCurrentActivity, onDayChanged, onTick } from "./state/events";
 import { ipc } from "./state/ipc";
 import { HamburgerMenu } from "./ui/menu";
 import { PausedOverlay } from "./ui/paused-overlay";
@@ -143,6 +143,9 @@ const editor = new HourEditor({
   setSegment: (key, start, end, category, presetId) =>
     ipc.setSegment(key, start, end, category, presetId),
   clearSegment: (key, start, end) => ipc.clearSegment(key, start, end),
+  reclassifySource: async (sourceKey, category) => {
+    await ipc.reclassifySource(sourceKey, category);
+  },
   refreshDay: async () => {
     try {
       const day = await ipc.getDay();
@@ -186,6 +189,15 @@ async function fetchDayWithRetry(): Promise<Awaited<ReturnType<typeof ipc.getDay
 }
 
 async function boot(): Promise<void> {
+  // Registered first so an early backfill's hm:day-changed isn't missed.
+  await onDayChanged(async () => {
+    try {
+      store.setDay(await ipc.getDay());
+    } catch (err) {
+      console.warn("day refresh after change failed", err);
+    }
+  });
+
   const day = await fetchDayWithRetry();
   if (!day) {
     store.loadMock();
@@ -220,7 +232,13 @@ async function boot(): Promise<void> {
     const proc = evt.process ?? "—";
     const head = evt.title ? evt.title.split(" — ")[0]!.slice(0, 64) : "";
     const idleSec = Math.floor(evt.idle_ms / 1000);
-    const idleTag = idleSec > 60 ? ` · idle ${Math.floor(idleSec / 60)}m` : "";
-    setTicker(`◉ ${proc} · ${head} · ${evt.category}${idleTag}`);
+    const thrSec = Math.round(evt.afk_threshold_ms / 1000);
+    if (evt.idle_break) {
+      // Idle crossed the threshold — this minute is a break, not the app.
+      setTicker(`💤 Away (idle ${idleSec}s / thr ${thrSec}s) · was ${proc}`);
+    } else {
+      // idle/threshold shown inline for now to make AFK behavior observable.
+      setTicker(`◉ ${proc} · ${head} · ${evt.category} · idle ${idleSec}s/${thrSec}s`);
+    }
   });
 }

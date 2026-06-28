@@ -84,7 +84,8 @@ pub fn list_sources(
 }
 
 #[tauri::command]
-pub fn reclassify_source(
+pub fn reclassify_source<R: Runtime>(
+    app: AppHandle<R>,
     state: State<'_, AppState>,
     source_key: String,
     category: String,
@@ -99,6 +100,8 @@ pub fn reclassify_source(
     if let Some(t) = &*state.tracker.lock() {
         t.overrides.lock().insert(source_key, cat);
     }
+    // Past minutes were recolored — nudge open windows to re-fetch.
+    crate::events::emit_day_changed(&app);
     Ok(updated)
 }
 
@@ -117,6 +120,7 @@ pub fn set_settings(
     state: State<'_, AppState>,
     day_start_hour: Option<u8>,
     window_grouping: Option<String>,
+    afk_threshold_ms: Option<u32>,
 ) -> Result<(), String> {
     let mut s = state.settings.lock();
     if let Some(h) = day_start_hour {
@@ -130,14 +134,23 @@ pub fn set_settings(
             .ok_or_else(|| format!("unknown window_grouping `{g}`"))?;
         s.window_grouping = parsed;
     }
+    if let Some(ms) = afk_threshold_ms {
+        // Floor at 5s so the tracker can't thrash on every sample.
+        s.afk_threshold_ms = ms.max(5_000);
+    }
     let json = serde_json::to_string(&*s).map_err(|e| e.to_string())?;
+    let afk_value = s.afk_threshold_ms;
     drop(s);
 
-    // Propagate grouping to the running tracker so it takes effect immediately.
-    if let Some(parsed) = window_grouping.as_deref().and_then(crate::config::WindowGrouping::parse) {
-        if let Some(t) = &*state.tracker.lock() {
+    // Propagate live settings to the running tracker so they take effect immediately.
+    if let Some(t) = &*state.tracker.lock() {
+        if let Some(parsed) = window_grouping.as_deref().and_then(crate::config::WindowGrouping::parse) {
             t.grouping
                 .store(parsed.as_u8(), std::sync::atomic::Ordering::Relaxed);
+        }
+        if afk_threshold_ms.is_some() {
+            t.afk_threshold
+                .store(afk_value, std::sync::atomic::Ordering::Relaxed);
         }
     }
 

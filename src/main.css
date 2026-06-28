@@ -155,6 +155,42 @@
   gap: 2px;
 }
 
+.hm-popover__header {
+  padding: 4px 8px 1px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 240px;
+}
+
+.hm-popover__subtitle {
+  padding: 0 8px 6px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--c-border);
+  color: var(--c-text-muted);
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 240px;
+}
+
+/* Two intents, two accents: app-classify (green) vs manual region edit (amber). */
+.hm-popover--source {
+  border-left: 3px solid var(--c-accent);
+}
+.hm-popover--source .hm-popover__header {
+  color: var(--c-accent);
+}
+.hm-popover--manual {
+  border-left: 3px solid var(--c-unclassified);
+}
+.hm-popover--manual .hm-popover__header {
+  color: var(--c-unclassified);
+}
+
 .hm-popover__choice {
   display: grid;
   grid-template-columns: 14px 1fr auto;

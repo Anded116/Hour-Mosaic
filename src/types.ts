@@ -4,6 +4,7 @@ export type Category =
   | "productive"
   | "unproductive"
   | "neutral"
+  | "idle"
   | "unclassified"
   | "void";
 
@@ -11,6 +12,7 @@ export const CATEGORIES: ReadonlyArray<Category> = [
   "productive",
   "unproductive",
   "neutral",
+  "idle",
   "unclassified",
   "void",
 ];

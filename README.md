@@ -7,14 +7,17 @@ Tauri (Rust + system webview) with a tiny vanilla-TS frontend.
 ## Features
 
 - **Ambient mosaic** of 24 hour tiles, each minute colored by activity category
-  (productive / unproductive / neutral / unclassified / void).
+  (productive / unproductive / neutral / idle / unclassified / void). `idle`
+  (away-from-keyboard) is its own category, separate from a deliberate `neutral`
+  break.
 - **Adaptive layout** from 150 × 150 px to fullscreen — grid reshapes between
   6×4, 12×2, 24×1 and the inverse, depending on the window's aspect ratio.
 - **Live current-hour pulse** with a thin minute progress marker; past hours
   stay uniformly muted (no "older = darker" gradient).
 - **Foreground-window tracker** with built-in classification of common apps
-  and domains; AFK > 5 min → neutral, with per-app overrides for video calls
-  (stays active) and media players (counts as unproductive).
+  and domains; idle past a configurable threshold (default 5 min) → the `idle`
+  category (away), with per-app overrides for video calls (stays active) and
+  media players (counts as unproductive).
 - **Window grouping** (Settings → Grouping) — choose how windows collapse into
   one tracked entity: *By application* (all Telegram chats / browser tabs as
   one), *By site* (browsers split per domain — the default), or *By window*
@@ -27,30 +30,39 @@ Tauri (Rust + system webview) with a tiny vanilla-TS frontend.
   auto-tracker never overwrites them.
 - **Global hotkey** `Ctrl+Shift+B` instantly marks the current minute as a
   break.
+- **Always-on-top** main window (toggle in the menu, persisted across restarts);
+  it steps aside automatically while a settings/history window is open.
 - **History window** with a 30-day GitHub-style heatmap, drill-down into any
   past day, and aggregated metrics (avg productive/day, best/worst day,
-  deep-work streak).
-- **Settings window** with retroactive reclassification, day-start hour,
-  hotkey reference, and a privacy panel for JSON export + wipe.
+  deep-work streak). Each cell is a true weighted blend of the day's category
+  minutes (productive/unproductive/neutral), so contested days read warm rather
+  than a flat grey.
+- **Classification UI** — assign a category to any observed app/site; the
+  choice recolors past minutes and is applied live to future ones. Multi-select
+  to classify several at once. Seed defaults cover common apps, and a one-time
+  backfill applies them to already-recorded minutes.
+- **Settings window** — classification, window grouping, timing (day-start hour
+  + idle→break threshold), hotkey reference, and a privacy panel for JSON
+  export + wipe.
 
 ## Project layout
 
 ```
 src/                  # frontend (vanilla TS + Canvas)
   mosaic/             # layout solver, Canvas renderer, pulse, progressive disclosure
-  editor/             # drag-n-drop hour editor + category popover
+  editor/             # drag-n-drop hour editor, hover readout, category popover
   history/            # 30-day heatmap, drill-down, metrics
-  settings-ui/        # classification, day-start, privacy
+  settings-ui/        # classification, grouping, day-start, privacy
   state/              # IPC wrappers, event listeners, day store
   theme/              # CSS variable tokens + default palette
   ui/                 # hamburger menu, paused overlay
 src-tauri/            # Tauri 2 + Rust backend
   src/
     tracker.rs        # tokio loop polling foreground window + idle
-    classifier.rs     # rule engine over builtin DB + user rules
+    classifier.rs     # rule engine: user rules + seed; window-grouping; title normalize
     aggregator.rs     # sample -> minute (dominant category)
     db.rs             # rusqlite repository
-    seed.json         # builtin process / domain classification DB
+    seed.json         # builtin process / domain / source-key classification defaults
     events.rs         # hm:tick, hm:current-activity emitters
     commands.rs       # IPC surface
 index.html            # main window
@@ -93,8 +105,9 @@ first run the app stores its SQLite database at
 
 ## Platforms
 
-Windows-first. Cross-platform crates (`active-win-pos-rs`, `device_query`) work
-on macOS/Linux, but the build is currently only verified on Windows.
+Windows-first. The foreground-window crate (`active-win-pos-rs`) is
+cross-platform, but idle detection uses the Win32 `GetLastInputInfo` API and the
+build is currently only verified on Windows.
 
 ## Tracking philosophy
 

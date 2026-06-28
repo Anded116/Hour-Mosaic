@@ -19,6 +19,7 @@
   --c-productive: #10ff9e;
   --c-unproductive: #ff2d55;
   --c-neutral: #8a8a93;
+  --c-idle: #5f6b8c;
   --c-unclassified: #ffb020;
   --c-void: #0a0a0c;
 
@@ -26,6 +27,7 @@
   --c-productive-dim: #0a9a60;
   --c-unproductive-dim: #991b34;
   --c-neutral-dim: #53535a;
+  --c-idle-dim: #3a4156;
   --c-unclassified-dim: #996813;
   --c-void-dim: #0a0a0c;
 

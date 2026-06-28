@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::atomic::{AtomicU32, AtomicU8, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -59,6 +59,8 @@ pub struct TrackerHandle {
     /// Live user classification overrides (source_key → category) — updated by
     /// `reclassify_source` and applied by the tracker loop to future samples.
     pub overrides: Arc<Mutex<HashMap<String, Category>>>,
+    /// Live idle→break threshold in ms — updated by `set_settings`.
+    pub afk_threshold: Arc<AtomicU32>,
     #[allow(dead_code)]
     pub shutdown: watch::Sender<bool>,
 }
@@ -82,12 +84,12 @@ pub fn start_tracker<R: tauri::Runtime>(
         override_map.insert(key, cat);
     }
     let overrides: Arc<Mutex<HashMap<String, Category>>> = Arc::new(Mutex::new(override_map));
+    let afk_threshold = Arc::new(AtomicU32::new(settings.afk_threshold_ms));
     let (shutdown_tx, mut shutdown_rx) = watch::channel(false);
 
     let classifier = Arc::new(Mutex::new(Classifier::new()));
     let aggregator = Arc::new(Mutex::new(Aggregator::new()));
     let interval = Duration::from_millis(settings.sample_interval_ms.max(1000) as u64);
-    let afk_threshold = settings.afk_threshold_ms;
     let day_start_hour = settings.day_start_hour;
     let retention_days = settings.sample_retention_days as i64;
 
@@ -109,14 +111,19 @@ pub fn start_tracker<R: tauri::Runtime>(
         let classifier = classifier.clone();
         let overrides = overrides.clone();
         let grouping_val = settings.window_grouping;
+        let app = app.clone();
         tauri::async_runtime::spawn(async move {
-            backfill_unclassified(&db, &classifier, &overrides, grouping_val);
+            let changed = backfill_unclassified(&db, &classifier, &overrides, grouping_val);
+            if changed > 0 {
+                crate::events::emit_day_changed(&app);
+            }
         });
     }
 
     let paused_for_loop = paused.clone();
     let grouping_for_loop = grouping.clone();
     let overrides_for_loop = overrides.clone();
+    let afk_threshold_for_loop = afk_threshold.clone();
 
     tauri::async_runtime::spawn(async move {
         let mut ticker = tokio::time::interval(interval);
@@ -164,8 +171,20 @@ pub fn start_tracker<R: tauri::Runtime>(
                 classification.category = cat;
             }
 
+            let afk_threshold = afk_threshold_for_loop.load(Ordering::Relaxed);
             let effective_category =
                 apply_afk(classification.category, classification.afk, idle_ms, afk_threshold);
+
+            // When idle past the threshold turns a minute into a break, the break
+            // is its own entity — not a continuation of whatever app happened to
+            // hold focus. (StaysActive apps like calls keep their own source.)
+            let idle_break =
+                idle_ms > afk_threshold && matches!(classification.afk, AfkBehavior::Default);
+            let (entity_key, entity_title): (&str, Option<&str>) = if idle_break {
+                ("idle", None)
+            } else {
+                (classification.source_key.as_str(), title.as_deref())
+            };
 
             emit_current_activity(
                 &app,
@@ -176,6 +195,8 @@ pub fn start_tracker<R: tauri::Runtime>(
                     source_key: classification.source_key.clone(),
                     idle_ms,
                     paused: false,
+                    idle_break,
+                    afk_threshold_ms: afk_threshold,
                 },
             );
 
@@ -184,8 +205,8 @@ pub fn start_tracker<R: tauri::Runtime>(
                 &date_key,
                 minute_of_day,
                 effective_category,
-                &classification.source_key,
-                title.as_deref(),
+                entity_key,
+                entity_title,
             );
 
             if let Some(fin) = finalized {
@@ -212,6 +233,7 @@ pub fn start_tracker<R: tauri::Runtime>(
         paused,
         grouping,
         overrides,
+        afk_threshold,
         shutdown: shutdown_tx,
     }
 }
@@ -225,12 +247,12 @@ fn backfill_unclassified(
     classifier: &Mutex<Classifier>,
     overrides: &Mutex<HashMap<String, Category>>,
     grouping: WindowGrouping,
-) {
+) -> usize {
     let pairs = match db.unclassified_source_pairs() {
         Ok(p) => p,
         Err(err) => {
             tracing::warn!(?err, "backfill: failed to list unclassified sources");
-            return;
+            return 0;
         }
     };
 
@@ -258,6 +280,7 @@ fn backfill_unclassified(
     if changed > 0 {
         tracing::info!(changed, "backfill reclassified historical minutes");
     }
+    changed
 }
 
 fn apply_afk(
@@ -272,7 +295,7 @@ fn apply_afk(
     match afk {
         AfkBehavior::StaysActive => base,
         AfkBehavior::BecomesUnproductive => Category::Unproductive,
-        AfkBehavior::Default => Category::Neutral,
+        AfkBehavior::Default => Category::Idle,
     }
 }
 

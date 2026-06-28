@@ -175,7 +175,8 @@ export class ClassificationTable {
 
         const tdSel = document.createElement("td");
         const select = document.createElement("select");
-        for (const cat of CATEGORIES) {
+        // `idle` is a tracker-derived AFK state, not a manual classification.
+        for (const cat of CATEGORIES.filter((c) => c !== "idle")) {
           const opt = document.createElement("option");
           opt.value = cat;
           opt.textContent = cat;

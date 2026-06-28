@@ -7,6 +7,7 @@ export interface DaySummary {
   productive_minutes: number;
   unproductive_minutes: number;
   neutral_minutes: number;
+  idle_minutes: number;
   unclassified_minutes: number;
   tracked_minutes: number;
 }
@@ -44,8 +45,12 @@ export const ipc = {
     invoke<number>("reclassify_source", { sourceKey, category }),
   wipeData: () => invoke<void>("wipe_data"),
   getSettings: () => invoke<SettingsPayload>("get_settings"),
-  setSettings: (patch: Partial<Pick<SettingsPayload, "day_start_hour" | "window_grouping">>) =>
-    invoke<void>("set_settings", patch),
+  // Tauri maps camelCase args → snake_case Rust params (like the other commands).
+  setSettings: (patch: {
+    dayStartHour?: number;
+    windowGrouping?: WindowGrouping;
+    afkThresholdMs?: number;
+  }) => invoke<void>("set_settings", patch),
   setSegment: (
     dateKey: string,
     startMinute: number,

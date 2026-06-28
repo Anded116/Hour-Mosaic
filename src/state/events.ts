@@ -17,6 +17,8 @@ export interface CurrentActivityEvent {
   source_key: string;
   idle_ms: number;
   paused: boolean;
+  idle_break: boolean;
+  afk_threshold_ms: number;
 }
 
 export function onTick(handler: (e: TickEvent) => void): Promise<UnlistenFn> {
@@ -27,4 +29,9 @@ export function onCurrentActivity(
   handler: (e: CurrentActivityEvent) => void,
 ): Promise<UnlistenFn> {
   return listen<CurrentActivityEvent>("hm:current-activity", (event) => handler(event.payload));
+}
+
+/** Fires when stored minutes change out-of-band (reclassify, backfill). */
+export function onDayChanged(handler: () => void): Promise<UnlistenFn> {
+  return listen("hm:day-changed", () => handler());
 }

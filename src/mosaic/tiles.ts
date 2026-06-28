@@ -39,6 +39,7 @@ const CATEGORY_KEYS: ReadonlyArray<Category> = [
   "productive",
   "unproductive",
   "neutral",
+  "idle",
   "unclassified",
   "void",
 ];

@@ -77,7 +77,7 @@ function colorFor(cell: DayCell, anchors: Anchors): string {
   }
   const greenW = s.productive_minutes;
   const redW = s.unproductive_minutes;
-  const greyW = s.neutral_minutes + s.unclassified_minutes;
+  const greyW = s.neutral_minutes + s.idle_minutes + s.unclassified_minutes;
   const total = greenW + redW + greyW;
   if (total <= 0) return "var(--c-void)";
 

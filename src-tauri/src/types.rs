@@ -8,6 +8,9 @@ pub enum Category {
     Productive,
     Unproductive,
     Neutral,
+    /// Away-from-keyboard (idle past the threshold). Distinct from a deliberate
+    /// `Neutral` break — it's not the foreground app and not active downtime.
+    Idle,
     Unclassified,
     Void,
 }
@@ -18,6 +21,7 @@ impl Category {
             Category::Productive => "productive",
             Category::Unproductive => "unproductive",
             Category::Neutral => "neutral",
+            Category::Idle => "idle",
             Category::Unclassified => "unclassified",
             Category::Void => "void",
         }
@@ -28,6 +32,7 @@ impl Category {
             "productive" => Category::Productive,
             "unproductive" => Category::Unproductive,
             "neutral" => Category::Neutral,
+            "idle" => Category::Idle,
             "unclassified" => Category::Unclassified,
             "void" => Category::Void,
             _ => return None,
@@ -92,6 +97,7 @@ pub struct DaySummary {
     pub productive_minutes: u32,
     pub unproductive_minutes: u32,
     pub neutral_minutes: u32,
+    pub idle_minutes: u32,
     pub unclassified_minutes: u32,
     pub tracked_minutes: u32,
 }

@@ -186,6 +186,7 @@ impl Db {
                 productive_minutes: 0,
                 unproductive_minutes: 0,
                 neutral_minutes: 0,
+                idle_minutes: 0,
                 unclassified_minutes: 0,
                 tracked_minutes: 0,
             });
@@ -195,6 +196,7 @@ impl Db {
                 Some(Category::Productive) => entry.productive_minutes += count,
                 Some(Category::Unproductive) => entry.unproductive_minutes += count,
                 Some(Category::Neutral) => entry.neutral_minutes += count,
+                Some(Category::Idle) => entry.idle_minutes += count,
                 Some(Category::Unclassified) => entry.unclassified_minutes += count,
                 Some(Category::Void) | None => {}
             }

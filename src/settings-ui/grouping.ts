@@ -76,7 +76,7 @@ export async function mountGrouping(container: HTMLElement): Promise<void> {
       const prev = current;
       current = next;
       try {
-        await ipc.setSettings({ window_grouping: next });
+        await ipc.setSettings({ windowGrouping: next });
       } catch (err) {
         console.error("set_settings(window_grouping) failed", err);
         // Revert the UI selection on failure.

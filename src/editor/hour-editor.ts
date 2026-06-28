@@ -3,7 +3,7 @@
 import { hitTest } from "../mosaic/layout";
 import type { MosaicRenderer, MosaicSelection } from "../mosaic/mosaic";
 import type { Category, MinuteCell } from "../types";
-import { showCategoryPopover } from "./category-popover";
+import { SOURCE_CHOICES, showCategoryPopover } from "./category-popover";
 import { DragSelect, type DragRange } from "./drag-select";
 
 export interface EditorDeps {
@@ -27,6 +27,8 @@ export interface EditorDeps {
   ) => Promise<void>;
   /** Clears the lock on a segment. */
   clearSegment: (dateKey: string, startMinute: number, endMinute: number) => Promise<void>;
+  /** Reclassifies a whole source (app/site) — recolors its past + future minutes. */
+  reclassifySource: (sourceKey: string, category: Category) => Promise<void>;
   /** Re-fetches the day and pushes it into the store. */
   refreshDay: () => Promise<void>;
   /** Optional surface for displaying invoke errors in the UI. */
@@ -90,12 +92,40 @@ export class HourEditor {
     this.popoverOpen = true;
     this.clearHoverFrame();
     try {
-      const choice = await showCategoryPopover(clientX, clientY);
+      const startAbs = range.hour * 60 + range.startMinute;
+      const endAbs = range.hour * 60 + range.endMinute;
+
+      // A single-minute click (no drag) classifies the whole app/source under it.
+      // A drag across minutes is a manual per-minute edit.
+      if (range.startMinute === range.endMinute) {
+        const run = findActivityRun(this.deps.getMinutes(), startAbs);
+        const sourceKey = run?.cell.source_key ?? null;
+        if (run && sourceKey && sourceKey !== "idle") {
+          const choice = await showCategoryPopover(clientX, clientY, {
+            variant: "source",
+            header: entityLabel(sourceKey) ?? sourceKey,
+            subtitle: `Whole app · now ${categoryLabel(run.cell.category)}`,
+            choices: SOURCE_CHOICES,
+          });
+          this.deps.renderer.setSelection(null);
+          if (!choice) return;
+          await this.deps.reclassifySource(sourceKey, choice.category);
+          // The backend emits hm:day-changed, which refreshes the mosaic.
+          return;
+        }
+        // No classifiable source (void/idle/untracked) — fall through to manual edit.
+      }
+
+      const dayStart = this.deps.dayStartHour();
+      const len = endAbs - startAbs + 1;
+      const choice = await showCategoryPopover(clientX, clientY, {
+        variant: "manual",
+        header: `Edit ${len} min`,
+        subtitle: `${wallClock(startAbs, dayStart)}–${wallClock(endAbs + 1, dayStart)} · this selection only`,
+      });
       this.deps.renderer.setSelection(null);
       if (!choice) return;
       const dateKey = this.deps.dateKey();
-      const startAbs = range.hour * 60 + range.startMinute;
-      const endAbs = range.hour * 60 + range.endMinute;
       if (choice.category === "void") {
         await this.deps.clearSegment(dateKey, startAbs, endAbs);
       } else {
@@ -109,8 +139,8 @@ export class HourEditor {
       }
       await this.deps.refreshDay();
     } catch (err) {
-      console.error("set_segment failed", err);
-      this.deps.onError?.(err, "set_segment");
+      console.error("commit failed", err);
+      this.deps.onError?.(err, "classify");
     } finally {
       this.popoverOpen = false;
     }
@@ -243,6 +273,7 @@ function findActivityRun(minutes: ReadonlyArray<MinuteCell>, abs: number): Activ
  */
 function entityLabel(sourceKey: string | null): string | null {
   if (!sourceKey) return null;
+  if (sourceKey === "idle") return "Away"; // AFK break — a break is its own entity
   const sep = sourceKey.indexOf("::");
   if (sep !== -1) {
     const rest = sourceKey.slice(sep + 2);
@@ -266,7 +297,9 @@ function categoryLabel(c: Category): string {
     case "unproductive":
       return "Unproductive";
     case "neutral":
-      return "Break";
+      return "Neutral";
+    case "idle":
+      return "Idle";
     case "unclassified":
       return "Unclassified";
     case "void":

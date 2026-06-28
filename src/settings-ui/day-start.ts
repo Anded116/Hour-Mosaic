@@ -1,7 +1,35 @@
+import { disable as autostartDisable, enable as autostartEnable, isEnabled as autostartIsEnabled } from "@tauri-apps/plugin-autostart";
+
 import { ipc } from "../state/ipc";
 
 export async function mountDayStart(container: HTMLElement): Promise<void> {
   container.innerHTML = "";
+
+  // Launch at login (autostart) — instant toggle.
+  const autoLabel = document.createElement("label");
+  autoLabel.className = "settings__field";
+  const autoCheck = document.createElement("input");
+  autoCheck.type = "checkbox";
+  autoCheck.disabled = true; // until we read current state
+  const autoText = document.createElement("span");
+  autoText.className = "settings__field-label";
+  autoText.textContent = "Launch at login";
+  autoLabel.append(autoCheck, autoText);
+  autostartIsEnabled()
+    .then((on) => {
+      autoCheck.checked = on;
+      autoCheck.disabled = false;
+    })
+    .catch((err) => console.error("autostart isEnabled failed", err));
+  autoCheck.addEventListener("change", async () => {
+    try {
+      if (autoCheck.checked) await autostartEnable();
+      else await autostartDisable();
+    } catch (err) {
+      console.error("autostart toggle failed", err);
+      autoCheck.checked = !autoCheck.checked; // revert on failure
+    }
+  });
 
   const settings = await ipc.getSettings().catch(() => null);
   const dayCurrent = settings?.day_start_hour ?? 4;
@@ -82,7 +110,7 @@ export async function mountDayStart(container: HTMLElement): Promise<void> {
     }
   });
 
-  container.append(dayLabel, afkLabel, note, row);
+  container.append(autoLabel, dayLabel, afkLabel, note, row);
 }
 
 function clamp(v: number, lo: number, hi: number): number {

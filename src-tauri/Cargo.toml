@@ -2,7 +2,7 @@
 name = "hour-mosaic"
 version = "0.1.0"
 description = "Hour Mosaic — ambient time tracker"
-authors = ["Clawbuster"]
+authors = ["Andrey Kolombet"]
 edition = "2021"
 rust-version = "1.77"
 
@@ -28,6 +28,7 @@ rusqlite = { version = "0.32", features = ["bundled"] }
 dirs = "5"
 active-win-pos-rs = "0.8"
 tauri-plugin-global-shortcut = "2"
+tauri-plugin-autostart = "2"
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.59", features = [

@@ -203,12 +203,7 @@ export class HourEditor {
     this.tooltip.replaceChildren(titleEl, subEl);
 
     this.tooltip.style.display = "";
-    const margin = 8;
-    const docW = document.documentElement.clientWidth;
-    const left = Math.max(margin, Math.min(docW - this.tooltip.offsetWidth - margin, event.clientX + 12));
-    const top = Math.max(margin, event.clientY + 12);
-    this.tooltip.style.left = `${left}px`;
-    this.tooltip.style.top = `${top}px`;
+    this.positionTooltip(event);
   }
 
   private updateTooltip(range: DragRange, event: PointerEvent): void {
@@ -218,10 +213,24 @@ export class HourEditor {
     const length = endAbs - startAbs + 1;
     this.tooltip.textContent = `${wallClock(startAbs, dayStart)} → ${wallClock(endAbs + 1, dayStart)} · ${length} мин`;
     this.tooltip.style.display = "";
+    this.positionTooltip(event);
+  }
+
+  /** Places the tooltip near the cursor, flipping above/left when it would
+   * overflow the viewport (fixes the bottom row running off-screen). */
+  private positionTooltip(event: PointerEvent): void {
     const margin = 8;
     const docW = document.documentElement.clientWidth;
-    const left = Math.max(margin, Math.min(docW - this.tooltip.offsetWidth - margin, event.clientX + 12));
-    const top = Math.max(margin, event.clientY + 12);
+    const docH = document.documentElement.clientHeight;
+    const w = this.tooltip.offsetWidth;
+    const h = this.tooltip.offsetHeight;
+    // Below-right by default; flip above / left if it would overflow.
+    let left = event.clientX + 12;
+    let top = event.clientY + 12;
+    if (left + w + margin > docW) left = event.clientX - w - 12;
+    if (top + h + margin > docH) top = event.clientY - h - 12;
+    left = Math.max(margin, Math.min(docW - w - margin, left));
+    top = Math.max(margin, Math.min(docH - h - margin, top));
     this.tooltip.style.left = `${left}px`;
     this.tooltip.style.top = `${top}px`;
   }

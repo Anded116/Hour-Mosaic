@@ -121,9 +121,14 @@
   cursor: pointer;
 }
 
-.history__drill-head button:hover {
+.history__drill-head button:hover:not(:disabled) {
   border-color: var(--c-accent);
   color: var(--c-accent);
+}
+
+.history__drill-head button:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 .history__day-label {

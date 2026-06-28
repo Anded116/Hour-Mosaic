@@ -60,6 +60,10 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "publisher": "Andrey Kolombet",
+    "copyright": "© 2026 Andrey Kolombet. All rights reserved.",
+    "shortDescription": "Ambient time tracker",
+    "longDescription": "Hour Mosaic — an ambient time tracker that renders your day as a mosaic of 24 hourly tiles, colored by activity.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

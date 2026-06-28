@@ -26,11 +26,7 @@ if (!heatmapEl || !dayCanvas) throw new Error("history shell missing");
 const drill = new DayReadonlyView(dayCanvas);
 const heatmap = new MonthHeatmap(heatmapEl, {
   days: HEATMAP_DAYS,
-  onSelect: (dateKey) => {
-    selectedDate = dateKey;
-    heatmap.setSelected(dateKey);
-    void loadDrill(dateKey);
-  },
+  onSelect: (dateKey) => selectDay(dateKey),
 });
 
 let summariesByKey = new Map<string, DaySummary>();
@@ -39,25 +35,47 @@ let today = monthTodayKey(dayStartHour);
 let minKey = dateKeyOffset(today, -(HEATMAP_DAYS - 1));
 let selectedDate = today;
 
+/** Selects a day, clamped to the visible [minKey, today] window. */
+function selectDay(dateKey: string): void {
+  const clamped = dateKey < minKey ? minKey : dateKey > today ? today : dateKey;
+  updateNav();
+  if (clamped === selectedDate) return;
+  selectedDate = clamped;
+  heatmap.setSelected(selectedDate);
+  updateNav();
+  void loadDrill(selectedDate);
+}
+
+/** Disables the arrows at the ends of the window. */
+function updateNav(): void {
+  if (prevBtn) prevBtn.disabled = selectedDate <= minKey;
+  if (nextBtn) nextBtn.disabled = selectedDate >= today;
+}
+
 window.addEventListener("resize", () => drill.resize());
 
-prevBtn?.addEventListener("click", () => {
-  const prev = dateKeyOffset(selectedDate, -1);
-  selectedDate = prev < minKey ? minKey : prev; // don't escape the 30-day window
-  heatmap.setSelected(selectedDate);
-  void loadDrill(selectedDate);
-});
-nextBtn?.addEventListener("click", () => {
-  const next = dateKeyOffset(selectedDate, 1);
-  selectedDate = next > today ? today : next; // can't go past today
-  heatmap.setSelected(selectedDate);
-  void loadDrill(selectedDate);
-});
+prevBtn?.addEventListener("click", () => selectDay(dateKeyOffset(selectedDate, -1)));
+nextBtn?.addEventListener("click", () => selectDay(dateKeyOffset(selectedDate, 1)));
 
 window.addEventListener("keydown", (e) => {
-  if (e.key === "ArrowLeft") prevBtn?.click();
-  if (e.key === "ArrowRight") nextBtn?.click();
+  if (e.key === "ArrowLeft") selectDay(dateKeyOffset(selectedDate, -1));
+  if (e.key === "ArrowRight") selectDay(dateKeyOffset(selectedDate, 1));
 });
+
+// Wheel over the day row scrolls through days (down = older, up = newer),
+// throttled so a trackpad doesn't fly through the window.
+let lastWheel = 0;
+heatmapEl.addEventListener(
+  "wheel",
+  (e) => {
+    e.preventDefault();
+    const now = performance.now();
+    if (now - lastWheel < 80) return;
+    lastWheel = now;
+    selectDay(dateKeyOffset(selectedDate, e.deltaY > 0 ? -1 : 1));
+  },
+  { passive: false },
+);
 
 void boot();
 
@@ -72,6 +90,7 @@ async function boot(): Promise<void> {
   today = monthTodayKey(dayStartHour);
   minKey = dateKeyOffset(today, -(HEATMAP_DAYS - 1));
   selectedDate = today;
+  updateNav();
 
   try {
     const summaries = await ipc.getDayRange(minKey, today);

@@ -4,6 +4,17 @@ Ambient time tracker. Your day rendered as a mosaic of 24 hourly tiles on a dark
 background — emerald when you're productive, crimson when you're not. Built on
 Tauri (Rust + system webview) with a tiny vanilla-TS frontend.
 
+It's meant for a second monitor: an always-on dashboard you glance at once or
+twice an hour, not an app you open. The shape and color of the day *is* the UI.
+
+## Install
+
+Windows. Grab the latest installer (`Hour Mosaic_x.y.z_x64-setup.exe`) or the
+standalone `.exe` from the releases, run it, and the window appears top-most on
+your desktop. Tracking starts immediately; all data stays local at
+`%APPDATA%\com.clawbuster.hour-mosaic\hour-mosaic.db`. Optionally enable
+**Settings → Timing → Launch at login** to have it start with Windows.
+
 ## Features
 
 - **Ambient mosaic** of 24 hour tiles, each minute colored by activity category
@@ -122,3 +133,7 @@ build is currently only verified on Windows.
 - No notifications, no "productivity score" badges, no streak celebrations.
   The colors are the data.
 - All data stays on your machine. There is no telemetry and no cloud sync.
+
+## License
+
+See [LICENSE](LICENSE).

@@ -47,7 +47,7 @@
   flex: 1 1 auto;
   font-family: var(--font-mono);
   font-size: 10px;
-  color: var(--c-text-muted);
+  color: var(--c-control);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -60,13 +60,14 @@
   flex: 0 0 auto;
   margin-left: 6px;
   padding: 0 6px;
-  height: 16px;
-  display: inline-flex;
+  height: 22px;
+  /* Hidden until there's an error to copy — toggled via .status-copy--visible. */
+  display: none;
   align-items: center;
   background: transparent;
-  border: 1px solid var(--c-border);
+  border: none;
   border-radius: 3px;
-  color: var(--c-text-muted);
+  color: var(--c-control);
   font-size: 11px;
   line-height: 1;
   cursor: pointer;
@@ -75,29 +76,33 @@
   app-region: no-drag;
 }
 
+.status-copy--visible {
+  display: inline-flex;
+}
+
 .status-copy:hover {
+  background: var(--c-border);
   color: var(--c-text);
-  border-color: var(--c-text-muted);
 }
 
 .hamburger {
   flex: 0 0 auto;
-  width: 20px;
-  height: 20px;
+  width: 26px;
+  height: 22px;
   border: none;
+  border-radius: 3px;
   background: transparent;
-  color: var(--c-text-muted);
-  font-size: 16px;
+  color: var(--c-control);
+  font-size: 15px;
   line-height: 1;
   cursor: pointer;
-  opacity: 0.6;
-  transition: opacity 120ms ease;
+  transition: background 120ms ease, color 120ms ease;
   -webkit-app-region: no-drag;
   app-region: no-drag;
 }
 
 .hamburger:hover {
-  opacity: 1;
+  background: var(--c-border);
   color: var(--c-text);
 }
 
@@ -115,7 +120,7 @@
   height: 22px;
   border: none;
   background: transparent;
-  color: var(--c-text-muted);
+  color: var(--c-control);
   font-size: 12px;
   line-height: 1;
   cursor: pointer;

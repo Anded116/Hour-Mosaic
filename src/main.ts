@@ -50,15 +50,21 @@ function setTicker(text: string): void {
   if (ticker) ticker.textContent = text;
 }
 
+function setCopyVisible(visible: boolean): void {
+  copyStatusBtn?.classList.toggle("status-copy--visible", visible);
+}
+
 function flashError(err: unknown, label: string): void {
   const msg = err instanceof Error ? err.message : String(err);
   lastErrorText = `${label}: ${msg}`;
   setTicker(`✕ ${label}: ${msg}`);
+  setCopyVisible(true);
   if (statusBar) {
     statusBar.classList.add("status-bar--error");
     window.setTimeout(() => {
       statusBar.classList.remove("status-bar--error");
       if (ticker) ticker.textContent = lastTickerText;
+      setCopyVisible(false);
     }, 4000);
   }
 }
@@ -185,6 +191,7 @@ async function fetchDayWithRetry(): Promise<Awaited<ReturnType<typeof ipc.getDay
         console.warn("backend get_day failed after retries, falling back to mock", err);
         lastErrorText = `backend offline: ${err instanceof Error ? err.message : String(err)}`;
         setTicker(`✕ backend offline: ${err}`);
+        setCopyVisible(true); // persistent error — keep the copy button up
         return null;
       }
       await sleep(200);

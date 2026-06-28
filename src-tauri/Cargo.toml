@@ -1,6 +1,6 @@
 [package]
 name = "hour-mosaic"
-version = "0.1.0"
+version = "1.0.0"
 description = "Hour Mosaic — ambient time tracker"
 authors = ["Andrey Kolombet"]
 edition = "2021"

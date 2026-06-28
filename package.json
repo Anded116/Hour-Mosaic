@@ -1,7 +1,7 @@
 {
   "name": "hour-mosaic",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Ambient time tracker — a day rendered as a mosaic of 24 hourly tiles",
   "type": "module",
   "scripts": {

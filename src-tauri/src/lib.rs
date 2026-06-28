@@ -48,6 +48,7 @@ pub fn run() {
             commands::open_history,
             commands::open_settings,
             commands::set_always_on_top,
+            commands::quit_app,
             commands::list_sources,
             commands::reclassify_source,
             commands::wipe_data,
@@ -77,19 +78,19 @@ pub fn run() {
             // Pre-declared secondary windows (history, settings) must hide on
             // close, not destroy — otherwise `get_webview_window(label)` returns
             // None on the second invocation and `open_history` / `open_settings`
-            // fail with "window not declared". After hiding, we also re-sync
-            // main's always-on-top flag (it was forced OFF while the secondary
-            // was visible to keep it from being obscured).
+            // fail with "window not declared". They also drop their topmost flag
+            // on hide (set when shown so they raise above the topmost main).
             let app_handle = app.handle().clone();
             for label in ["history", "settings"] {
                 if let Some(win) = app.get_webview_window(label) {
                     let win_clone = win.clone();
-                    let app_for_event = app_handle.clone();
                     win.on_window_event(move |event| {
                         if let WindowEvent::CloseRequested { api, .. } = event {
                             api.prevent_close();
+                            // Drop topmost as it hides so a later show re-raises cleanly;
+                            // main keeps its own desired always-on-top untouched.
+                            let _ = win_clone.set_always_on_top(false);
                             let _ = win_clone.hide();
-                            commands::sync_main_always_on_top(&app_for_event, Some(label));
                         }
                     });
                 }
@@ -98,7 +99,7 @@ pub fn run() {
             // Apply the persisted always-on-top preference to the main window.
             // tauri.conf.json declares it AOT-on; if the user previously turned
             // it off, this corrects the actual flag on boot.
-            commands::sync_main_always_on_top(&app_handle, None);
+            commands::sync_main_always_on_top(&app_handle);
 
             Ok(())
         })

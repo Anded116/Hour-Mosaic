@@ -44,6 +44,7 @@ export const ipc = {
   reclassifySource: (sourceKey: string, category: Category) =>
     invoke<number>("reclassify_source", { sourceKey, category }),
   wipeData: () => invoke<void>("wipe_data"),
+  quitApp: () => invoke<void>("quit_app"),
   getSettings: () => invoke<SettingsPayload>("get_settings"),
   // Tauri maps camelCase args → snake_case Rust params (like the other commands).
   setSettings: (patch: {

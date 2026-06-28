@@ -7,15 +7,6 @@
   height: 100vh;
 }
 
-.drag-region {
-  position: fixed;
-  inset: 0 0 auto 0;
-  height: 24px;
-  -webkit-app-region: drag;
-  app-region: drag;
-  z-index: 5;
-}
-
 .mosaic-host {
   flex: 1 1 auto;
   position: relative;
@@ -32,12 +23,14 @@
 
 .status-bar {
   flex: 0 0 auto;
-  height: 22px;
+  height: 24px;
   display: flex;
   align-items: center;
-  padding: 0 8px;
+  gap: 4px;
+  padding: 0 2px 0 6px;
   background: var(--c-bg-elevated);
-  border-top: 1px solid var(--c-border);
+  border-bottom: 1px solid var(--c-border);
+  /* The top bar is the window drag handle; interactive children opt out below. */
   -webkit-app-region: drag;
   app-region: drag;
 }
@@ -88,20 +81,17 @@
 }
 
 .hamburger {
-  position: fixed;
-  top: 2px;
-  right: 4px;
-  width: 22px;
-  height: 22px;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
   border: none;
   background: transparent;
   color: var(--c-text-muted);
-  font-size: 18px;
+  font-size: 16px;
   line-height: 1;
   cursor: pointer;
-  opacity: 0.5;
+  opacity: 0.6;
   transition: opacity 120ms ease;
-  z-index: 10;
   -webkit-app-region: no-drag;
   app-region: no-drag;
 }
@@ -109,6 +99,39 @@
 .hamburger:hover {
   opacity: 1;
   color: var(--c-text);
+}
+
+/* Window controls (custom, since decorations are off). */
+.win-controls {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  margin-left: 2px;
+}
+
+.win-btn {
+  width: 26px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  color: var(--c-text-muted);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 3px;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.win-btn:hover {
+  background: var(--c-border);
+  color: var(--c-text);
+}
+
+.win-btn--close:hover {
+  background: var(--c-unproductive);
+  color: #fff;
 }
 
 .hm-drag-tooltip {

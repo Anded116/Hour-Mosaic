@@ -1,10 +1,11 @@
 // Main window entry — wires the mosaic to live backend tracking.
 // Falls back to mock data when IPC is unavailable (e.g. running the Vite preview without Tauri).
 
+import { getCurrentWindow } from "@tauri-apps/api/window";
+
 import { HourEditor } from "./editor/hour-editor";
 import { MosaicRenderer } from "./mosaic/mosaic";
 import { PulseLoop } from "./mosaic/pulse";
-import { detailLevel, showsTicker } from "./mosaic/progressive";
 import { createDayStore, currentMinuteOfDay, todayKey } from "./state/day-store";
 import { onCurrentActivity, onDayChanged, onTick } from "./state/events";
 import { ipc } from "./state/ipc";
@@ -16,6 +17,9 @@ const ticker = document.getElementById("ticker") as HTMLSpanElement | null;
 const statusBar = document.getElementById("status-bar") as HTMLElement | null;
 const copyStatusBtn = document.getElementById("copy-status") as HTMLButtonElement | null;
 const hamburger = document.getElementById("hamburger") as HTMLButtonElement | null;
+const winMinBtn = document.getElementById("win-min") as HTMLButtonElement | null;
+const winMaxBtn = document.getElementById("win-max") as HTMLButtonElement | null;
+const winCloseBtn = document.getElementById("win-close") as HTMLButtonElement | null;
 
 if (!canvas) throw new Error("#mosaic canvas missing");
 
@@ -34,22 +38,12 @@ pulse.start();
 
 window.addEventListener("resize", () => {
   renderer.resize();
-  updateStatusVisibility();
 });
 
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") pulse.start();
   else pulse.stop();
 });
-
-function updateStatusVisibility(): void {
-  if (!statusBar) return;
-  const level = detailLevel(document.documentElement.clientWidth, document.documentElement.clientHeight);
-  statusBar.classList.toggle("status-bar--hidden", !showsTicker(level));
-  // Trigger a renderer resize because hiding the status bar changes mosaic-host height.
-  renderer.resize();
-}
-updateStatusVisibility();
 
 function setTicker(text: string): void {
   lastTickerText = text;
@@ -97,6 +91,17 @@ copyStatusBtn?.addEventListener("click", () => {
       copyStatusBtn.textContent = "⧉";
     }, 1200);
   });
+});
+
+// Window controls (decorations are off, so these are custom).
+winMinBtn?.addEventListener("click", () => {
+  getCurrentWindow().minimize().catch((err) => console.error("minimize failed", err));
+});
+winMaxBtn?.addEventListener("click", () => {
+  getCurrentWindow().toggleMaximize().catch((err) => console.error("toggleMaximize failed", err));
+});
+winCloseBtn?.addEventListener("click", () => {
+  ipc.quitApp().catch((err) => console.error("quit failed", err));
 });
 
 window.setInterval(() => {

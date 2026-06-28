@@ -26,12 +26,17 @@ Tauri (Rust + system webview) with a tiny vanilla-TS frontend.
 - **Hover activity readout** — point at any minute and the contiguous run of
   the same activity is framed together, with a tooltip showing the app/window,
   the time span, its length, and category ("Telegram · 14:05–14:37 · 32 мин").
-- **Drag-n-drop edits** on past minutes; manual segments are locked so the
-  auto-tracker never overwrites them.
+- **Click a minute to classify its app** — set the whole source's category
+  (recolors its past, sticks for the future) right from the mosaic. **Drag a
+  range** for a manual locked per-minute edit instead. The two popovers are
+  visually distinct (green app-classify vs amber manual edit).
 - **Global hotkey** `Ctrl+Shift+B` instantly marks the current minute as a
   break.
+- **Custom top bar** doubles as the window drag handle and holds the menu,
+  status ticker, and window controls (minimize / maximize / quit) — the window
+  is frameless.
 - **Always-on-top** main window (toggle in the menu, persisted across restarts);
-  it steps aside automatically while a settings/history window is open.
+  settings/history windows raise above it when opened.
 - **History window** with a 30-day GitHub-style heatmap, drill-down into any
   past day, and aggregated metrics (avg productive/day, best/worst day,
   deep-work streak). Each cell is a true weighted blend of the day's category

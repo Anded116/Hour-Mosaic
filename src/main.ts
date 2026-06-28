@@ -38,11 +38,27 @@ let dayStartHour = 4;
 let lastTickerText = "◉ loading…";
 /** Full text of the most recent error, kept for the copy button after the ticker reverts. */
 let lastErrorText = "";
-/** Latest live activity (from hm:current-activity) — colors the in-progress minute
- * and optimistically fills a minute the instant it rolls over, before its tick lands. */
-let liveCategory: Category | null = null;
+/** Per-minute category tally, mirroring the backend aggregator (one count per
+ * hm:current-activity event ≈ one backend sample). The *dominant* of this is the
+ * color the minute will finalize to — used for both the progress fill and the
+ * optimistic rollover fill, so the later tick never visibly recolors. */
+const minuteTally = new Map<Category, number>();
+let tallyMinute = -1;
+let liveCategory: Category | null = null; // dominant-so-far of the current minute
 let liveSource: string | null = null;
 let liveTitle: string | null = null;
+
+function dominantOfTally(): Category | null {
+  let best: Category | null = null;
+  let bestN = 0;
+  for (const [cat, n] of minuteTally) {
+    if (n > bestN) {
+      bestN = n;
+      best = cat;
+    }
+  }
+  return best;
+}
 
 /** Advance the current-minute pointer to wall-clock time; when it rolls, color the
  * just-completed minute with the live activity so it never flashes void. */
@@ -50,8 +66,11 @@ function tickMinute(): void {
   const m = currentMinuteOfDay(dayStartHour);
   const cur = store.get().currentMinute;
   if (m === cur) return;
-  if (!paused && liveCategory !== null && cur === (m - 1 + 1440) % 1440) {
-    store.applyTick(cur, liveCategory, liveSource, liveTitle);
+  if (!paused && cur === (m - 1 + 1440) % 1440) {
+    // Color the just-completed minute with the dominant we tallied — the same
+    // category its backend tick will carry, so the tick won't recolor it.
+    const cat = (tallyMinute === cur ? dominantOfTally() : null) ?? liveCategory;
+    if (cat !== null) store.applyTick(cur, cat, liveSource, liveTitle);
   }
   store.setCurrentMinute(m);
 }
@@ -260,12 +279,18 @@ async function boot(): Promise<void> {
       paused = evt.paused;
       pausedOverlay.setVisible(paused);
     }
-    // Remember the live activity so the in-progress minute's fill is its color
-    // and a rolled-over minute can be colored instantly (see tickMinute).
-    liveCategory = evt.category;
+    // Tally this sample into the current minute, then color by the dominant
+    // so far — that's what the minute will finalize to (no later recolor).
+    const m = currentMinuteOfDay(dayStartHour);
+    if (m !== tallyMinute) {
+      minuteTally.clear();
+      tallyMinute = m;
+    }
+    minuteTally.set(evt.category, (minuteTally.get(evt.category) ?? 0) + 1);
+    liveCategory = dominantOfTally();
     liveSource = evt.source_key;
     liveTitle = evt.title;
-    renderer.setCurrentActivityCategory(evt.category);
+    renderer.setCurrentActivityCategory(liveCategory);
     if (paused) {
       setTicker("◉ PAUSED");
       return;

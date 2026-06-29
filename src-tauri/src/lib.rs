@@ -9,6 +9,8 @@ mod seed;
 mod store;
 mod tracker;
 mod types;
+#[cfg(target_os = "macos")]
+mod mac_permissions;
 
 use std::sync::Arc;
 
@@ -31,6 +33,9 @@ pub fn run() {
         .init();
 
     tracing::info!("Hour Mosaic starting");
+
+    #[cfg(target_os = "macos")]
+    mac_permissions::request_permissions();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
@@ -58,6 +63,9 @@ pub fn run() {
             commands::wipe_data,
             commands::get_settings,
             commands::set_settings,
+            commands::check_mac_permissions,
+            commands::open_mac_screen_recording_settings,
+            commands::open_mac_accessibility_settings,
         ])
         .setup(|app| {
             let db_path = app

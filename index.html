@@ -9,9 +9,9 @@
     <script type="module" src="/src/main.ts" defer></script>
   </head>
   <body class="window window--main">
-    <header id="status-bar" class="status-bar">
+    <header id="status-bar" class="status-bar" data-tauri-drag-region>
       <button id="hamburger" class="hamburger" type="button" aria-label="Menu">☰</button>
-      <span id="ticker" class="ticker" aria-live="polite"></span>
+      <span id="ticker" class="ticker" aria-live="polite" data-tauri-drag-region></span>
       <button id="copy-status" class="status-copy" type="button" aria-label="Copy status / error" title="Copy status / error to clipboard">⧉</button>
       <span class="win-controls">
         <button id="win-min" class="win-btn" type="button" aria-label="Minimize" title="Minimize">—</button>

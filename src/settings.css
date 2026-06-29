@@ -68,6 +68,35 @@
   font-size: 12px;
 }
 
+.settings__permissions-banner {
+  background: color-mix(in srgb, var(--c-unproductive) 18%, var(--c-bg-elevated));
+  border: 1px solid var(--c-unproductive);
+  color: var(--c-text);
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin: 0 20px 10px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.btn--small {
+  background: var(--c-bg-elevated);
+  border: 1px solid var(--c-border);
+  color: var(--c-text);
+  border-radius: 3px;
+  padding: 4px 8px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.btn--small:hover {
+  border-color: var(--c-unproductive);
+  color: var(--c-unproductive);
+}
+
 .settings__filter input {
   width: 100%;
   background: var(--c-bg-elevated);

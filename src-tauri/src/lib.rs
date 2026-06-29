@@ -63,6 +63,9 @@ pub fn run() {
             commands::wipe_data,
             commands::get_settings,
             commands::set_settings,
+            commands::check_mac_permissions,
+            commands::open_mac_screen_recording_settings,
+            commands::open_mac_accessibility_settings,
         ])
         .setup(|app| {
             let db_path = app

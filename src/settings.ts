@@ -11,17 +11,32 @@ async function checkPermissions() {
   try {
     const [screen, acc] = await invoke<[boolean, boolean]>("check_mac_permissions");
     const banner = document.getElementById("permissions-banner");
-    const btn = document.getElementById("btn-fix-permissions");
-    if (banner && btn) {
+    const btnContainer = document.getElementById("permissions-buttons");
+    if (banner && btnContainer) {
       if (!screen || !acc) {
         banner.style.display = "flex";
+        btnContainer.innerHTML = "";
+        
+        if (!screen) {
+          const btnScreen = document.createElement("button");
+          btnScreen.className = "btn btn--small";
+          btnScreen.textContent = "Screen Recording";
+          btnScreen.addEventListener("click", () => invoke("open_mac_screen_recording_settings").catch(console.error));
+          btnContainer.appendChild(btnScreen);
+        }
+        
+        if (!acc) {
+          const btnAcc = document.createElement("button");
+          btnAcc.className = "btn btn--small";
+          btnAcc.textContent = "Accessibility";
+          btnAcc.addEventListener("click", () => invoke("open_mac_accessibility_settings").catch(console.error));
+          btnContainer.appendChild(btnAcc);
+        }
+        
         const missing = [];
         if (!screen) missing.push("Screen Recording");
         if (!acc) missing.push("Accessibility");
         banner.querySelector("span")!.textContent = `⚠️ macOS Permissions Missing: ${missing.join(", ")}`;
-        btn.addEventListener("click", () => {
-          invoke("open_mac_settings").catch(console.error);
-        });
       } else {
         banner.style.display = "none";
       }

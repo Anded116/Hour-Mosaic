@@ -288,3 +288,31 @@ fn day_coords_now(day_start_hour: u8) -> (String, u16) {
     let minute = (now.hour() * 60 + now.minute()) as u16;
     (date_key, minute)
 }
+
+#[tauri::command]
+pub fn check_mac_permissions() -> (bool, bool) {
+    #[cfg(target_os = "macos")]
+    {
+        crate::mac_permissions::check_permissions()
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        (true, true)
+    }
+}
+
+#[tauri::command]
+pub fn open_mac_screen_recording_settings() {
+    #[cfg(target_os = "macos")]
+    {
+        crate::mac_permissions::open_screen_recording_settings();
+    }
+}
+
+#[tauri::command]
+pub fn open_mac_accessibility_settings() {
+    #[cfg(target_os = "macos")]
+    {
+        crate::mac_permissions::open_accessibility_settings();
+    }
+}

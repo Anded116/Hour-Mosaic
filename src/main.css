@@ -31,8 +31,6 @@
   background: var(--c-bg-elevated);
   border-bottom: 1px solid var(--c-border);
   /* The top bar is the window drag handle; interactive children opt out below. */
-  -webkit-app-region: drag;
-  app-region: drag;
 }
 
 .status-bar--hidden {
@@ -51,9 +49,6 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  /* Let the user drag-select the text to copy it manually as well. */
-  user-select: text;
-  -webkit-user-select: text;
 }
 
 .status-copy {
@@ -72,8 +67,6 @@
   line-height: 1;
   cursor: pointer;
   /* Status bar is a window drag-region; the button must opt out to be clickable. */
-  -webkit-app-region: no-drag;
-  app-region: no-drag;
 }
 
 .status-copy--visible {
@@ -97,8 +90,6 @@
   line-height: 1;
   cursor: pointer;
   transition: background 120ms ease, color 120ms ease;
-  -webkit-app-region: no-drag;
-  app-region: no-drag;
 }
 
 .hamburger:hover {
@@ -125,8 +116,6 @@
   line-height: 1;
   cursor: pointer;
   border-radius: 3px;
-  -webkit-app-region: no-drag;
-  app-region: no-drag;
 }
 
 .win-btn:hover {
